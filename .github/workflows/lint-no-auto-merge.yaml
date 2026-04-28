@@ -1,0 +1,13 @@
+name: lint-no-auto-merge
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  lint-no-auto-merge:
+    uses: jr200-labs/github-action-templates/.github/workflows/lint_no_auto_merge.yaml@master

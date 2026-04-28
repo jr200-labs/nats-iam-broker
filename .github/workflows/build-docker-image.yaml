@@ -56,3 +56,11 @@ jobs:
     secrets:
       registry_username: ${{ github.actor }}
       registry_token: ${{ secrets.GITHUB_TOKEN }}
+      # GitHub App auth for cloning private git deps at build time
+      # (e.g. uv sync over `pkg @ git+https://github.com/<org>/<repo>`).
+      # The reusable mints an installation token and writes /tmp/.netrc
+      # only when both are non-empty; repos with no private deps can
+      # leave the org-level INTEGRATION_* unset and these resolve to ''
+      # without breaking the build.
+      client_id: ${{ vars.INTEGRATION_CLIENT_ID }}
+      app_private_key: ${{ secrets.INTEGRATION_APP_PRIVATE_KEY }}

@@ -6,13 +6,14 @@ on:
   workflow_dispatch:
 
 # Only the caller's TOP-LEVEL permissions cascade into reusable
-# workflows. The reusable's renovate job needs all three writes —
-# without this block GitHub silently downgrades to read and the call
-# startup-fails. See AGENTS.md.
+# workflows. The reusable's renovate job needs contents/issues/PR
+# writes for repo state + actions:read for its post-step that fetches
+# the job log to detect package-lookup failures. See AGENTS.md.
 permissions:
   contents: write
   issues: write
   pull-requests: write
+  actions: read
 
 jobs:
   renovate:

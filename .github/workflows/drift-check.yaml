@@ -17,5 +17,5 @@ jobs:
   drift-check:
     runs-on: ${{ fromJSON(vars.RUNNER_PROFILES)[vars.RUNNER_PROFILE].default }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - run: ./scripts/sync-shared-drift-check

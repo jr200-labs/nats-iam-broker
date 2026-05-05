@@ -1,0 +1,23 @@
+name: publish-quarto-docs
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'docs/site/**'
+  workflow_dispatch:
+
+# Only the caller's TOP-LEVEL permissions cascade into reusable
+# workflows. The Quarto Pages publisher needs contents:write to update
+# gh-pages.
+permissions:
+  contents: write
+  pages: write
+
+jobs:
+  publish-quarto-docs:
+    uses: jr200-labs/github-action-templates/.github/workflows/build_quarto_docs.yaml@master
+    with:
+      checkout-ref: ${{ github.ref }}
+      site-path: docs/site
+      runner: ${{ fromJSON(vars.RUNNER_PROFILES)[vars.RUNNER_PROFILE].default }}

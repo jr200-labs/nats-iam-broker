@@ -16,7 +16,7 @@ set -uo pipefail
 
 REPO="jr200-labs/github-action-templates"
 BRANCH="${SYNC_REF:-master}"
-BASE_URL="https://raw.githubusercontent.com/${REPO}/${BRANCH}/consumers"
+BASE_URL="${SYNC_BASE_URL:-https://raw.githubusercontent.com/${REPO}/${BRANCH}/consumers}"
 CONFIG=".github/.shared-config.yaml"
 WORKFLOWS_DIR=".github/workflows"
 STRICT="${STRICT:-0}"

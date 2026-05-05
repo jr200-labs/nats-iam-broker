@@ -10,7 +10,7 @@ require (
 	github.com/go-playground/validator v9.31.0+incompatible
 	github.com/goccy/go-yaml v1.19.2
 	github.com/nats-io/jwt/v2 v2.8.1
-	github.com/nats-io/nats-server/v2 v2.12.7
+	github.com/nats-io/nats-server/v2 v2.12.8
 	github.com/nats-io/nats.go v1.51.0
 	github.com/nats-io/nkeys v0.4.15
 	github.com/prometheus/client_golang v1.23.2
@@ -27,7 +27,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.43.0
 	go.opentelemetry.io/otel/sdk/log v0.19.0
 	go.opentelemetry.io/otel/trace v1.43.0
-	go.uber.org/zap v1.27.1
+	go.uber.org/zap v1.28.0
 	golang.org/x/oauth2 v0.36.0
 )
 
@@ -60,10 +60,10 @@ require (
 	go.opentelemetry.io/proto/otlp v1.10.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
-	golang.org/x/crypto v0.49.0 // indirect
+	golang.org/x/crypto v0.50.0 // indirect
 	golang.org/x/net v0.52.0 // indirect
-	golang.org/x/sys v0.42.0 // indirect
-	golang.org/x/text v0.35.0 // indirect
+	golang.org/x/sys v0.43.0 // indirect
+	golang.org/x/text v0.36.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260401024825-9d38bb4040a9 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260401024825-9d38bb4040a9 // indirect

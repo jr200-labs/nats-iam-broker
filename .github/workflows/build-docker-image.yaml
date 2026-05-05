@@ -5,6 +5,27 @@ name: build-docker-image
 # workflow_dispatch for ad-hoc dev builds. The single
 # release-published event type is used by every artifact-publishing
 # workflow so this caller can be a verbatim copy across repos.
+#
+# Multi-image support (JRL-39): consumers with more than one
+# Dockerfile, or a single Dockerfile at a non-default path, list
+# variants in `.github/images.yaml`. Each entry takes:
+#   name: <published image name (ghcr.io/<owner>/<name>)>
+#   dockerfile: <path to Dockerfile, relative to repo root>
+#   context: <optional, default repo root — set when COPY/ADD
+#            paths are relative to a subdirectory>
+#
+#   images:
+#     - name: agent-base
+#       dockerfile: images/agent-base/Dockerfile
+#       context: images/agent-base   # rootfs/, etc. live here
+#     - name: agent-coder
+#       dockerfile: images/agent-coder/Dockerfile
+#       context: images/agent-coder
+#
+# Single-image consumers with a Dockerfile at the repo root or
+# `docker/Dockerfile` need no sidecar — the discover step falls back
+# to one synthetic entry using the repo name and the reusable's
+# default Dockerfile scan + repo-root context.
 
 on:
   repository_dispatch:
@@ -44,13 +65,48 @@ jobs:
       event_name: ${{ toJson(github.event_name) }}
       event: ${{ toJson(github.event) }}
 
-  main:
+  discover-images:
     needs: configure
+    runs-on: ${{ fromJSON(vars.RUNNER_PROFILES)[vars.RUNNER_PROFILE].default }}
+    outputs:
+      matrix: ${{ steps.gen.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ fromJson(needs.configure.outputs.context).checkout-ref }}
+          sparse-checkout: |
+            .github/images.yaml
+          sparse-checkout-cone-mode: false
+      # yq comes from the ARC runner base image (jr200-labs/actions-
+      # runner-images >= v0.4.0, JRL-39). Installing it via the
+      # mikefarah/yq action doesn't put the binary on PATH — that
+      # action is a docker container action for running yq commands.
+      - id: gen
+        env:
+          REPO_NAME: ${{ github.event.repository.name }}
+        run: |
+          set -euo pipefail
+          if [ -f .github/images.yaml ]; then
+            MATRIX=$(yq -o=json -I=0 '{"include": .images}' .github/images.yaml)
+          else
+            MATRIX=$(jq -nc --arg name "$REPO_NAME" '{include: [{name: $name, dockerfile: ""}]}')
+          fi
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+          echo "Resolved matrix: $MATRIX"
+
+  main:
+    needs: [configure, discover-images]
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.discover-images.outputs.matrix) }}
     uses: jr200-labs/github-action-templates/.github/workflows/build_docker_image_multiplatform.yaml@master
     with:
       checkout-ref: ${{ fromJson(needs.configure.outputs.context).checkout-ref }}
       registry_name: ghcr.io
-      image_name: ${{ github.repository }}
+      image_name: ${{ github.repository_owner }}/${{ matrix.name }}
+      dockerfile: ${{ matrix.dockerfile }}
+      context: ${{ matrix.context || '' }}
+      build-contexts: ${{ matrix.build_contexts || '' }}
       tag: ${{ fromJson(needs.configure.outputs.context).tag }}
       platforms: ${{ fromJson(needs.configure.outputs.context).platforms }}
     secrets:
@@ -64,3 +120,10 @@ jobs:
       # without breaking the build.
       client_id: ${{ vars.INTEGRATION_CLIENT_ID }}
       app_private_key: ${{ secrets.INTEGRATION_APP_PRIVATE_KEY }}
+      # BuildKit secrets — exposed to RUN steps via
+      # `--mount=type=secret,id=ghcr_token`. Lets Dockerfiles pull
+      # private GHCR artifacts at build time. Every consumer gets
+      # ghcr_token wired by default; consumers that don't need it
+      # can ignore the secret.
+      build_secrets: |
+        ghcr_token=${{ secrets.GITHUB_TOKEN }}

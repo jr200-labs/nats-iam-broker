@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.1](https://github.com/jr200-labs/nats-iam-broker/compare/v1.5.0...v1.5.1) (2026-05-05)
+
+
+### Bug Fixes
+
+* **deps:** update all non-major dependencies ([#48](https://github.com/jr200-labs/nats-iam-broker/issues/48)) ([7931afd](https://github.com/jr200-labs/nats-iam-broker/commit/7931afd1a050ae98119203702a97918313eef165))
+
 ## [1.5.0](https://github.com/jr200-labs/nats-iam-broker/compare/v1.4.0...v1.5.0) (2026-05-05)
 
 

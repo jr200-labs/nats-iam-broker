@@ -6,5 +6,6 @@ workflows:
   - hygiene
   - go
   - docker
+  - quarto-docs
   - helm-chart
   - release

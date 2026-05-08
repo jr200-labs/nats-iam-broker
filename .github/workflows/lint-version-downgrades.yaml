@@ -1,0 +1,15 @@
+name: lint-version-downgrades
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  lint-version-downgrades:
+    uses: jr200-labs/github-action-templates/.github/workflows/lint_version_downgrades.yaml@master
+    with:
+      base-ref: ${{ github.event.pull_request.base.ref || '' }}

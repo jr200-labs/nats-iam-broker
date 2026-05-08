@@ -4,7 +4,7 @@ on:
   push:
     branches: [master]
     paths:
-      - 'docs/site/**'
+      - 'docs/**'
   workflow_dispatch:
 
 # Only the caller's TOP-LEVEL permissions cascade into reusable
@@ -19,5 +19,5 @@ jobs:
     uses: jr200-labs/github-action-templates/.github/workflows/build_quarto_docs.yaml@master
     with:
       checkout-ref: ${{ github.ref }}
-      site-path: docs/site
+      site-path: docs
       runner: ${{ fromJSON(vars.RUNNER_PROFILES)[vars.RUNNER_PROFILE].default }}

@@ -2,7 +2,7 @@ name: renovate
 
 on:
   schedule:
-    - cron: "0 6 * * *"
+    - cron: "0 17 * * *"
   workflow_dispatch:
 
 # Only the caller's TOP-LEVEL permissions cascade into reusable

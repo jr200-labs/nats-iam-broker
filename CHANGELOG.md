@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.2](https://github.com/jr200-labs/nats-iam-broker/compare/v1.5.1...v1.5.2) (2026-05-14)
+
+
+### Bug Fixes
+
+* **deps:** update actions/create-github-app-token action to v3.2.0 ([#52](https://github.com/jr200-labs/nats-iam-broker/issues/52)) ([97d6bc0](https://github.com/jr200-labs/nats-iam-broker/commit/97d6bc0a4f55f2628f2b76f58ae50432ff8ab9fc))
+
 ## [1.5.1](https://github.com/jr200-labs/nats-iam-broker/compare/v1.5.0...v1.5.1) (2026-05-08)
 
 

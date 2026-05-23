@@ -26,7 +26,7 @@ nats-iam-broker serve --watch --metrics env.yaml idp.yaml rbac.yaml
 
 ## Documentation
 
-Full documentation is available at: https://jr200.github.io/nats-iam-broker/
+Full documentation is available at: https://jr200-labs.github.io/nats-iam-broker/
 
 ## Contributing
 

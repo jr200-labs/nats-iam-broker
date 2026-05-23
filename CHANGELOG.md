@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.3](https://github.com/jr200-labs/nats-iam-broker/compare/v1.5.2...v1.5.3) (2026-05-20)
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/nats-io/nats-server/v2 to v2.14.1 ([#54](https://github.com/jr200-labs/nats-iam-broker/issues/54)) ([8741ae5](https://github.com/jr200-labs/nats-iam-broker/commit/8741ae5ba7ce5daf281451bb3a4281c12505f7ec))
+
 ## [1.5.2](https://github.com/jr200-labs/nats-iam-broker/compare/v1.5.1...v1.5.2) (2026-05-14)
 
 

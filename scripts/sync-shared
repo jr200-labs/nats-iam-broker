@@ -9,14 +9,16 @@
 #   sync-shared --check      # drift-check mode: diff against on-disk, exit non-zero on diff
 #   sync-shared --bootstrap  # first-run init: also fetches this script and the drift-check
 #
+# `.github/.shared-config.yaml` may pin `ref: shared-vX.Y.Z`; SYNC_REF
+# overrides that pin for diagnostics.
+#
 # Network failures: warn + exit 0 (don't block local commits).
 # CI sets STRICT=1 to make warnings fatal.
 
 set -uo pipefail
 
 REPO="jr200-labs/github-action-templates"
-BRANCH="${SYNC_REF:-master}"
-BASE_URL="${SYNC_BASE_URL:-https://raw.githubusercontent.com/${REPO}/${BRANCH}/consumers}"
+DEFAULT_REF="master"
 CONFIG=".github/.shared-config.yaml"
 WORKFLOWS_DIR=".github/workflows"
 STRICT="${STRICT:-0}"
@@ -41,6 +43,17 @@ for cmd in curl yq diff; do
 done
 
 [ -f "$CONFIG" ] || die "$CONFIG not found — see github-action-templates/AGENTS.md"
+
+CONFIG_REF=$(yq -r '.ref // ""' "$CONFIG")
+if [ -n "${SYNC_REF:-}" ]; then
+    REF="$SYNC_REF"
+elif [ -n "$CONFIG_REF" ]; then
+    REF="$CONFIG_REF"
+else
+    REF="$DEFAULT_REF"
+    warn "$CONFIG has no ref; defaulting to ${DEFAULT_REF}"
+fi
+BASE_URL="${SYNC_BASE_URL:-https://raw.githubusercontent.com/${REPO}/${REF}/consumers}"
 
 # Fetch a remote file; return non-zero on network failure.
 fetch() {
@@ -124,6 +137,9 @@ case "$MODE" in
         for f in "$WORKFLOWS_DIR"/*.yaml; do
             [ -f "$f" ] || continue
             name=$(basename "$f" .yaml)
+            if [[ "$name" == bespoke_* ]]; then
+                continue
+            fi
             echo "$WORKFLOWS" | grep -qx "$name" || echo "stale-or-bespoke: $f (not in resolved set)"
         done
         exit $rc

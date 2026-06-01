@@ -1,3 +1,5 @@
+# GENERATED/SHARED WORKFLOW: copied into consuming repos by sync-shared.
+# Do not edit in consuming repos; change jr200-labs/github-action-templates and sync.
 name: lint-version-downgrades
 
 on:

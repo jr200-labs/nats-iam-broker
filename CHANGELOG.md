@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.5.4](https://github.com/jr200-labs/nats-iam-broker/compare/v1.5.3...v1.5.4) (2026-06-06)
+
+
+### Bug Fixes
+
+* **deps:** update all non-major dependencies ([#57](https://github.com/jr200-labs/nats-iam-broker/issues/57)) ([4a4fcb5](https://github.com/jr200-labs/nats-iam-broker/commit/4a4fcb5ff4502abbca7dc84c2ef47307e1447ec2))
+* **deps:** update all non-major dependencies ([#61](https://github.com/jr200-labs/nats-iam-broker/issues/61)) ([c5c14ac](https://github.com/jr200-labs/nats-iam-broker/commit/c5c14ac8f61d3dd0c58a6dc78279696d478b457b))
+* **deps:** update module go.opentelemetry.io/contrib/bridges/otelzap to v0.19.0 ([#59](https://github.com/jr200-labs/nats-iam-broker/issues/59)) ([ace353f](https://github.com/jr200-labs/nats-iam-broker/commit/ace353f174ebee2eee8a0084c658fad078487732))
+
 ## [1.5.3](https://github.com/jr200-labs/nats-iam-broker/compare/v1.5.2...v1.5.3) (2026-05-20)
 
 

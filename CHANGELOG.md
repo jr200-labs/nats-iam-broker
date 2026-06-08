@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.5](https://github.com/jr200-labs/nats-iam-broker/compare/v1.5.4...v1.5.5) (2026-06-08)
+
+
+### Bug Fixes
+
+* **deps:** update all non-major dependencies to shared-v0.1.7 ([#62](https://github.com/jr200-labs/nats-iam-broker/issues/62)) ([67b770a](https://github.com/jr200-labs/nats-iam-broker/commit/67b770a437fc7ab9899d6bb0b2c8aa09538f97f6))
+* **deps:** update all non-major dependencies to shared-v0.1.8 ([#64](https://github.com/jr200-labs/nats-iam-broker/issues/64)) ([abbf24b](https://github.com/jr200-labs/nats-iam-broker/commit/abbf24b8c13309ea75b647806dd9f50f22fe8093))
+
 ## [1.5.4](https://github.com/jr200-labs/nats-iam-broker/compare/v1.5.3...v1.5.4) (2026-06-06)
 
 

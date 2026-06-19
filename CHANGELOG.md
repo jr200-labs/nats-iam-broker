@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.6.0](https://github.com/jr200-labs/nats-iam-broker/compare/v1.5.6...v1.6.0) (2026-06-19)
+
+
+### Features
+
+* **deps:** update github-actions to v7 ([#68](https://github.com/jr200-labs/nats-iam-broker/issues/68)) ([12fc371](https://github.com/jr200-labs/nats-iam-broker/commit/12fc3713386c207b110f33138a4257b77bd0b838))
+
+
+### Bug Fixes
+
+* **deps:** update all non-major dependencies to v3.19.0 ([#67](https://github.com/jr200-labs/nats-iam-broker/issues/67)) ([e21f2f7](https://github.com/jr200-labs/nats-iam-broker/commit/e21f2f7c6309a5d642f44885dec27669b22aad11))
+
 ## [1.5.6](https://github.com/jr200-labs/nats-iam-broker/compare/v1.5.5...v1.5.6) (2026-06-14)
 
 

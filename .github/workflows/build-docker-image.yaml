@@ -73,7 +73,7 @@ jobs:
     outputs:
       matrix: ${{ steps.gen.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ fromJson(needs.configure.outputs.context).checkout-ref }}
           sparse-checkout: |

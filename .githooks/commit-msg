@@ -1,0 +1,19 @@
+#!/usr/bin/env sh
+set -eu
+
+if ! command -v cog >/dev/null 2>&1; then
+  cat >&2 <<'EOF'
+cocogitto is required to commit in this repository.
+
+Install it with one of:
+  brew install cocogitto
+  cargo install --locked cocogitto
+  mise use -g cocogitto@latest
+
+Then retry the commit.
+EOF
+  exit 1
+fi
+
+"$(dirname "$0")/lint-message-text.sh" "commit message" "$1"
+cog verify --file "$1"

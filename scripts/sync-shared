@@ -22,6 +22,11 @@ DEFAULT_REF="master"
 CONFIG=".github/.shared-config.yaml"
 WORKFLOWS_DIR=".github/workflows"
 STRICT="${STRICT:-0}"
+COMMON_FILES=(
+    ".githooks/commit-msg"
+    ".githooks/lint-message-text.sh"
+    "cog.toml"
+)
 
 MODE="write"
 case "${1:-}" in
@@ -53,14 +58,96 @@ else
     REF="$DEFAULT_REF"
     warn "$CONFIG has no ref; defaulting to ${DEFAULT_REF}"
 fi
-BASE_URL="${SYNC_BASE_URL:-https://raw.githubusercontent.com/${REPO}/${REF}/consumers}"
+ROOT_URL="https://raw.githubusercontent.com/${REPO}/${REF}"
+BASE_URL="${SYNC_BASE_URL:-${ROOT_URL}/consumers}"
+if [ -n "${SYNC_SHARED_BASE_URL:-}" ]; then
+    SHARED_BASE_URL="$SYNC_SHARED_BASE_URL"
+elif [[ "${BASE_URL}" == */consumers ]]; then
+    SHARED_BASE_URL="${BASE_URL%/consumers}/shared"
+else
+    SHARED_BASE_URL="${ROOT_URL}/shared"
+fi
 
 # Fetch a remote file; return non-zero on network failure.
+fetch_from() {
+    local base="$1" remote="$2" out="$3"
+    mkdir -p "$(dirname "$out")"
+    curl -sfL --max-time 10 "${base}/${remote}" -o "${out}.tmp" || return 1
+    mv "${out}.tmp" "$out"
+}
+
 fetch() {
     local remote="$1" out="$2"
-    mkdir -p "$(dirname "$out")"
-    curl -sfL --max-time 10 "${BASE_URL}/${remote}" -o "${out}.tmp" || return 1
-    mv "${out}.tmp" "$out"
+    fetch_from "$BASE_URL" "$remote" "$out"
+}
+
+fetch_shared() {
+    local remote="$1" out="$2"
+    fetch_from "$SHARED_BASE_URL" "$remote" "$out"
+}
+
+ensure_git_hooks_path() {
+    command -v git >/dev/null 2>&1 || {
+        warn "git not found; skipped core.hooksPath=.githooks"
+        return 0
+    }
+    git rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
+        warn "not inside a git work tree; skipped core.hooksPath=.githooks"
+        return 0
+    }
+    [ "$(git config --get core.hooksPath || true)" = ".githooks" ] && return 0
+
+    git config core.hooksPath .githooks
+    echo "updated: git core.hooksPath -> .githooks"
+}
+
+cleanup_legacy_commitlint() {
+    local changed=0
+
+    for f in commitlint.config.js commitlint.config.cjs commitlint.config.mjs .shared/commitlint.config.mjs; do
+        if [ -f "$f" ]; then
+            rm -f "$f"
+            echo "removed: $f"
+        fi
+    done
+
+    if [ -f ".husky/commit-msg" ] && grep -qi 'commitlint' ".husky/commit-msg" 2>/dev/null; then
+        rm -f ".husky/commit-msg"
+        echo "removed: .husky/commit-msg"
+    fi
+
+    [ -f "package.json" ] || return 0
+
+    if ! command -v jq >/dev/null 2>&1; then
+        warn "jq not found; skipped legacy commitlint package cleanup"
+        return 0
+    fi
+
+    if jq '
+        del(.scripts.prepare | select(. == "husky" or . == "husky install"))
+        | del(.scripts | select(. == {}))
+        | del(.dependencies.husky, .devDependencies.husky, .optionalDependencies.husky)
+        | del(.dependencies["@commitlint/cli"], .devDependencies["@commitlint/cli"], .optionalDependencies["@commitlint/cli"])
+        | del(.dependencies["@commitlint/config-conventional"], .devDependencies["@commitlint/config-conventional"], .optionalDependencies["@commitlint/config-conventional"])
+        | del(.dependencies | select(. == {}))
+        | del(.devDependencies | select(. == {}))
+        | del(.optionalDependencies | select(. == {}))
+    ' package.json > package.json.tmp; then
+        if ! cmp -s package.json package.json.tmp; then
+            mv package.json.tmp package.json
+            changed=1
+        else
+            rm -f package.json.tmp
+        fi
+    else
+        rm -f package.json.tmp
+        warn "failed to clean legacy commitlint entries from package.json"
+        return 0
+    fi
+
+    if [ "$changed" -eq 1 ]; then
+        echo "updated: package.json legacy commitlint cleanup"
+    fi
 }
 
 # Resolve groups to a deduped, sorted list of workflow names.
@@ -103,11 +190,23 @@ case "$MODE" in
                 [ "$STRICT" = 1 ] && exit 1
             fi
         done <<<"$WORKFLOWS"
+        for common_file in "${COMMON_FILES[@]}"; do
+            if fetch_shared "$common_file" "$common_file"; then
+                echo "synced: ${common_file}"
+            else
+                warn "fetch failed: shared/${common_file}"
+                [ "$STRICT" = 1 ] && exit 1
+            fi
+        done
+        [ -f ".githooks/commit-msg" ] && chmod +x ".githooks/commit-msg"
+        [ -f ".githooks/lint-message-text.sh" ] && chmod +x ".githooks/lint-message-text.sh"
+        cleanup_legacy_commitlint
+        ensure_git_hooks_path
         if [ "$MODE" = "bootstrap" ]; then
             fetch "scripts/sync-shared" "scripts/sync-shared" || warn "fetch self failed"
             fetch "scripts/sync-shared-drift-check" "scripts/sync-shared-drift-check" || true
             chmod +x scripts/sync-shared scripts/sync-shared-drift-check 2>/dev/null || true
-            echo "bootstrap complete. commit .github/.shared-config.yaml + .github/workflows/* + scripts/sync-shared*"
+            echo "bootstrap complete. commit .github/.shared-config.yaml + .github/workflows/* + .githooks/commit-msg + cog.toml + scripts/sync-shared*"
         fi
         ;;
     check)
@@ -133,6 +232,25 @@ case "$MODE" in
                 rc=1
             fi
         done <<<"$WORKFLOWS"
+        for common_file in "${COMMON_FILES[@]}"; do
+            local_file="$common_file"
+            remote_file="${tmpdir}/shared/${common_file}"
+            if ! fetch_shared "$common_file" "$remote_file"; then
+                warn "fetch failed: shared/${common_file}"
+                rc=1
+                continue
+            fi
+            if [ ! -f "$local_file" ]; then
+                echo "drift: ${local_file} missing (canonical exists)"
+                rc=1
+                continue
+            fi
+            if ! diff -u "$local_file" "$remote_file" >/dev/null; then
+                echo "drift: ${local_file} differs from canonical"
+                diff -u "$local_file" "$remote_file" | head -40
+                rc=1
+            fi
+        done
         # Surface unexpected on-disk workflows that aren't part of the resolved set.
         for f in "$WORKFLOWS_DIR"/*.yaml; do
             [ -f "$f" ] || continue

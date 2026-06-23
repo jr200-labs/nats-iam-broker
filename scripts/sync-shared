@@ -150,6 +150,28 @@ cleanup_legacy_commitlint() {
     fi
 }
 
+has_resolved_workflow() {
+    local workflow="$1"
+    echo "$WORKFLOWS" | grep -qx "$workflow"
+}
+
+is_gat_commitlint_job() {
+    local workflow_file="$1"
+    [ -f "$workflow_file" ] || return 1
+
+    yq -e '.jobs.commitlint.uses == "jr200-labs/github-action-templates/.github/workflows/lint_commits.yaml@master"' "$workflow_file" >/dev/null 2>&1
+}
+
+cleanup_duplicate_workflow_commitlint() {
+    has_resolved_workflow commitlint || return 0
+
+    local ci_file="${WORKFLOWS_DIR}/ci.yaml"
+    is_gat_commitlint_job "$ci_file" || return 0
+
+    yq -i 'del(.jobs.commitlint)' "$ci_file"
+    echo "updated: ${ci_file} removed duplicate commitlint job"
+}
+
 # Resolve groups to a deduped, sorted list of workflow names.
 resolve_workflows() {
     local groups
@@ -201,6 +223,7 @@ case "$MODE" in
         [ -f ".githooks/commit-msg" ] && chmod +x ".githooks/commit-msg"
         [ -f ".githooks/lint-message-text.sh" ] && chmod +x ".githooks/lint-message-text.sh"
         cleanup_legacy_commitlint
+        cleanup_duplicate_workflow_commitlint
         ensure_git_hooks_path
         if [ "$MODE" = "bootstrap" ]; then
             fetch "scripts/sync-shared" "scripts/sync-shared" || warn "fetch self failed"
@@ -251,6 +274,10 @@ case "$MODE" in
                 rc=1
             fi
         done
+        if has_resolved_workflow commitlint && is_gat_commitlint_job "${WORKFLOWS_DIR}/ci.yaml"; then
+            echo "drift: ${WORKFLOWS_DIR}/ci.yaml has duplicate commitlint job; run ./scripts/sync-shared"
+            rc=1
+        fi
         # Surface unexpected on-disk workflows that aren't part of the resolved set.
         for f in "$WORKFLOWS_DIR"/*.yaml; do
             [ -f "$f" ] || continue

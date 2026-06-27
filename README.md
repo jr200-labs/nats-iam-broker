@@ -1,6 +1,6 @@
 # nats-iam-broker
 
-A configurable NATS auth callout micro-service that exchanges Identity Provider (IdP) tokens for NATS user authorization JWTs, implementing the [decentralised auth callout](https://docs.nats.io/running-a-nats-service/configuration/auth_callout) flow.
+A configurable NATS auth callout micro-service that exchanges Identity Provider (IdP) tokens for NATS user authorization JWTs, implementing the [decentralised auth callout](https://docs.nats.io/running-a-nats-service/configuration/securing_nats/auth_callout) flow.
 
 1. A prospective NATS user authenticates with their IdP and passes the obtained token to NATS.
 2. This micro-service validates the IdP token.

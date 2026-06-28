@@ -162,14 +162,25 @@ is_gat_commitlint_job() {
     yq -e '.jobs.commitlint.uses == "jr200-labs/github-action-templates/.github/workflows/lint_commits.yaml@master"' "$workflow_file" >/dev/null 2>&1
 }
 
-cleanup_duplicate_workflow_commitlint() {
-    has_resolved_workflow commitlint || return 0
+is_gat_lint_pr_metadata_job() {
+    local workflow_file="$1"
+    [ -f "$workflow_file" ] || return 1
 
+    yq -e '.jobs."lint-pr-metadata".uses == "jr200-labs/github-action-templates/.github/workflows/lint_pr_metadata.yaml@master"' "$workflow_file" >/dev/null 2>&1
+}
+
+cleanup_duplicate_workflow_hygiene_jobs() {
     local ci_file="${WORKFLOWS_DIR}/ci.yaml"
-    is_gat_commitlint_job "$ci_file" || return 0
 
-    yq -i 'del(.jobs.commitlint)' "$ci_file"
-    echo "updated: ${ci_file} removed duplicate commitlint job"
+    if has_resolved_workflow commitlint && is_gat_commitlint_job "$ci_file"; then
+        yq -i 'del(.jobs.commitlint)' "$ci_file"
+        echo "updated: ${ci_file} removed duplicate commitlint job"
+    fi
+
+    if has_resolved_workflow lint-pr-metadata && is_gat_lint_pr_metadata_job "$ci_file"; then
+        yq -i 'del(.jobs."lint-pr-metadata")' "$ci_file"
+        echo "updated: ${ci_file} removed duplicate lint-pr-metadata job"
+    fi
 }
 
 # Resolve groups to a deduped, sorted list of workflow names.
@@ -223,7 +234,7 @@ case "$MODE" in
         [ -f ".githooks/commit-msg" ] && chmod +x ".githooks/commit-msg"
         [ -f ".githooks/lint-message-text.sh" ] && chmod +x ".githooks/lint-message-text.sh"
         cleanup_legacy_commitlint
-        cleanup_duplicate_workflow_commitlint
+        cleanup_duplicate_workflow_hygiene_jobs
         ensure_git_hooks_path
         if [ "$MODE" = "bootstrap" ]; then
             fetch "scripts/sync-shared" "scripts/sync-shared" || warn "fetch self failed"
@@ -276,6 +287,10 @@ case "$MODE" in
         done
         if has_resolved_workflow commitlint && is_gat_commitlint_job "${WORKFLOWS_DIR}/ci.yaml"; then
             echo "drift: ${WORKFLOWS_DIR}/ci.yaml has duplicate commitlint job; run ./scripts/sync-shared"
+            rc=1
+        fi
+        if has_resolved_workflow lint-pr-metadata && is_gat_lint_pr_metadata_job "${WORKFLOWS_DIR}/ci.yaml"; then
+            echo "drift: ${WORKFLOWS_DIR}/ci.yaml has duplicate lint-pr-metadata job; run ./scripts/sync-shared"
             rc=1
         fi
         # Surface unexpected on-disk workflows that aren't part of the resolved set.

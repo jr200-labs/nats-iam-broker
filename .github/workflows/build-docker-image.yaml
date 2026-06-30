@@ -28,6 +28,12 @@ name: build-docker-image
 # `docker/Dockerfile` need no sidecar — the discover step falls back
 # to one synthetic entry using the repo name and the reusable's
 # default Dockerfile scan + repo-root context.
+#
+# Docker image platforms can be controlled org-wide with the
+# DOCKER_IMAGE_PLATFORMS repository/org variable. Accepted values are a
+# JSON array such as ["linux/amd64"] or a comma-separated string such as
+# linux/amd64,linux/arm64. workflow_dispatch inputs override the
+# variable for ad-hoc runs.
 
 on:
   repository_dispatch:
@@ -110,7 +116,7 @@ jobs:
       context: ${{ matrix.context || '' }}
       build-contexts: ${{ matrix.build_contexts || '' }}
       tag: ${{ fromJson(needs.configure.outputs.context).tag }}
-      platforms: ${{ fromJson(needs.configure.outputs.context).platforms }}
+      platforms: ${{ fromJson(needs.configure.outputs.context).platforms || vars.DOCKER_IMAGE_PLATFORMS || '' }}
     secrets:
       registry_username: ${{ github.actor }}
       registry_token: ${{ secrets.GITHUB_TOKEN }}

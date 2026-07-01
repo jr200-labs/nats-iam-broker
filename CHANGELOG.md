@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.7.0](https://github.com/jr200-labs/nats-iam-broker/compare/v1.6.0...v1.7.0) (2026-07-01)
+
+
+### Features
+
+* **deps:** update github-actions (major) ([#74](https://github.com/jr200-labs/nats-iam-broker/issues/74)) ([b0f75fd](https://github.com/jr200-labs/nats-iam-broker/commit/b0f75fdc8c9faf9ec64061314df49adc81017b39))
+
+
+### Bug Fixes
+
+* **deps:** update dependency jr200-labs/github-action-templates to shared-v0.1.19 ([#79](https://github.com/jr200-labs/nats-iam-broker/issues/79)) ([f4218ec](https://github.com/jr200-labs/nats-iam-broker/commit/f4218ec90ad5e81619762de614a35ab792e9bffc))
+* **deps:** update dependency jr200-labs/github-action-templates to shared-v0.1.20 ([#81](https://github.com/jr200-labs/nats-iam-broker/issues/81)) ([8a38518](https://github.com/jr200-labs/nats-iam-broker/commit/8a38518b115747f6d2fccfcfdd282c12568dcd22))
+* **deps:** update dependency jr200-labs/github-action-templates to shared-v0.1.21 ([#83](https://github.com/jr200-labs/nats-iam-broker/issues/83)) ([98c9321](https://github.com/jr200-labs/nats-iam-broker/commit/98c9321d3067ec5990899d8b82264efa8236e43a))
+* **deps:** update dependency jr200-labs/github-action-templates to shared-v0.1.23 ([#84](https://github.com/jr200-labs/nats-iam-broker/issues/84)) ([c2b8712](https://github.com/jr200-labs/nats-iam-broker/commit/c2b871231732eb7c7e2d9b28b4a8790e082a6d9c))
+* **deps:** update module github.com/nats-io/nats-server/v2 to v2.14.3 ([#82](https://github.com/jr200-labs/nats-iam-broker/issues/82)) ([cb2dd68](https://github.com/jr200-labs/nats-iam-broker/commit/cb2dd68ca8fd59158ddb79228f372cb9dca79ef1))
+* **deps:** update shared workflow ref ([#70](https://github.com/jr200-labs/nats-iam-broker/issues/70)) ([b8cff0e](https://github.com/jr200-labs/nats-iam-broker/commit/b8cff0e5af5e145f25e33b8c664ba42989203ef3))
+* **deps:** update shared workflow ref ([#73](https://github.com/jr200-labs/nats-iam-broker/issues/73)) ([7551be6](https://github.com/jr200-labs/nats-iam-broker/commit/7551be6e4b90e0d9c98486e06ddc45a91e83ebb1))
+* **deps:** update shared workflow ref ([#75](https://github.com/jr200-labs/nats-iam-broker/issues/75)) ([7f7c8f6](https://github.com/jr200-labs/nats-iam-broker/commit/7f7c8f6520b71cdbe12e925eff5c24b58d0f4120))
+* **deps:** update shared workflow ref ([#76](https://github.com/jr200-labs/nats-iam-broker/issues/76)) ([5a597cc](https://github.com/jr200-labs/nats-iam-broker/commit/5a597ccfce733bce82a3147f718a5da4ef074bd6))
+* **deps:** update shared workflow ref ([#77](https://github.com/jr200-labs/nats-iam-broker/issues/77)) ([159e35f](https://github.com/jr200-labs/nats-iam-broker/commit/159e35fa418d0b76be603ff681b07f7975edfa23))
+* **deps:** update shared workflow ref ([#78](https://github.com/jr200-labs/nats-iam-broker/issues/78)) ([0b5bfcd](https://github.com/jr200-labs/nats-iam-broker/commit/0b5bfcd8c6c4bfabe274d9c8b87d360685e47dd7))
+* sync shared workflow callers ([#72](https://github.com/jr200-labs/nats-iam-broker/issues/72)) ([4819a7f](https://github.com/jr200-labs/nats-iam-broker/commit/4819a7f3082a64ff7e598118399b20ffab8f9dce))
+* update README.md ([#80](https://github.com/jr200-labs/nats-iam-broker/issues/80)) ([28ef638](https://github.com/jr200-labs/nats-iam-broker/commit/28ef6386eb84189365bb25803d2190610023746e))
+
 ## [1.6.0](https://github.com/jr200-labs/nats-iam-broker/compare/v1.5.6...v1.6.0) (2026-06-19)
 
 

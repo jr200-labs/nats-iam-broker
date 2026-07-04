@@ -45,6 +45,14 @@ jobs:
       - name: Sync shared workflow callers
         run: ./scripts/sync-shared
 
+      - name: Bypass commit-msg hook for the bot commit
+        # sync-shared sets core.hooksPath=.githooks so the commit-msg lint
+        # runs on human commits. peter-evans/create-pull-request commits
+        # with a fixed bot message, and the runner does not install
+        # cocogitto — the hook would fail every drift-repair. Unset for
+        # this step; the commit message is enforced by the guard below.
+        run: git config --local --unset-all core.hooksPath || true
+
       - name: Create drift repair PR
         id: create-pull-request
         uses: peter-evans/create-pull-request@v8.1.1

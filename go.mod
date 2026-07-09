@@ -1,9 +1,9 @@
 module github.com/jr200-labs/nats-iam-broker
 
-go 1.26.4
+go 1.26.5
 
 require (
-	github.com/coreos/go-oidc/v3 v3.19.0
+	github.com/coreos/go-oidc/v3 v3.20.0
 	github.com/expr-lang/expr v1.17.8
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/go-jose/go-jose/v4 v4.1.4

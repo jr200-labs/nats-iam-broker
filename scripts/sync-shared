@@ -25,6 +25,7 @@ STRICT="${STRICT:-0}"
 COMMON_FILES=(
     ".githooks/commit-msg"
     ".githooks/lint-message-text.sh"
+    ".githooks/pre-commit"
     "cog.toml"
 )
 
@@ -233,6 +234,7 @@ case "$MODE" in
         done
         [ -f ".githooks/commit-msg" ] && chmod +x ".githooks/commit-msg"
         [ -f ".githooks/lint-message-text.sh" ] && chmod +x ".githooks/lint-message-text.sh"
+        [ -f ".githooks/pre-commit" ] && chmod +x ".githooks/pre-commit"
         cleanup_legacy_commitlint
         cleanup_duplicate_workflow_hygiene_jobs
         ensure_git_hooks_path

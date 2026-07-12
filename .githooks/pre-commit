@@ -1,0 +1,32 @@
+#!/usr/bin/env sh
+set -eu
+
+# Delegates to the pre-commit framework (https://pre-commit.com) so hooks
+# declared in .pre-commit-config.yaml actually run on `git commit`. Needed
+# because sync.sh points core.hooksPath at .githooks/, which bypasses the
+# hook that `pre-commit install` writes into .git/hooks/.
+#
+# Skips gracefully if the pre-commit binary is not on PATH — commits are
+# never blocked by a missing dev tool. Set SKIP_PRE_COMMIT=1 to bypass.
+
+if [ "${SKIP_PRE_COMMIT:-0}" = "1" ]; then
+  exit 0
+fi
+
+if ! command -v pre-commit >/dev/null 2>&1; then
+  cat >&2 <<'EOF'
+pre-commit not installed — skipping .pre-commit-config.yaml hooks.
+
+Install it once with one of:
+  brew install pre-commit
+  pipx install pre-commit
+  uv tool install pre-commit
+
+CI still enforces the same checks; this is a local-only bypass.
+EOF
+  exit 0
+fi
+
+[ -f .pre-commit-config.yaml ] || exit 0
+
+exec pre-commit run --hook-stage pre-commit

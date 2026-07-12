@@ -1,6 +1,6 @@
 [project]
 name = "nats-iam-broker"
-version = "1.6.0"
+version = "1.6.1"
 requires-python = ">=3.13"
 dependencies = [
     "quarto-cli>=1.9.38",

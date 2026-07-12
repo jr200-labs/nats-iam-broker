@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.7.0](https://github.com/jr200-labs/nats-iam-broker/compare/v1.6.0...v1.7.0) (2026-07-12)
+## [1.6.1](https://github.com/jr200-labs/nats-iam-broker/compare/v1.6.0...v1.6.1) (2026-07-12)
 
 
 ### Features

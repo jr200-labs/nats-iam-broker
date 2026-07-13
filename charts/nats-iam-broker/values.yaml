@@ -89,6 +89,7 @@ server:
 #   {{ readFile "/path/file" }}     - read entire file contents
 #   {{ readNthLine N "/path/file" }}- read the Nth line of a file (0-indexed)
 #   {{ b64encode .field }}          - base64-encode a value
+#   {{ sha256hex .field }}           - SHA-256 hex-encode a value
 # ---------------------------------------------------------------------------
 config:
 

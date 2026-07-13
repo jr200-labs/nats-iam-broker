@@ -11,11 +11,8 @@ repos:
   - repo: https://github.com/golangci/golangci-lint
     rev: v2.11.4
     hooks:
-      # Formatter — runs `golangci-lint fmt` (gofmt + goimports + gofumpt as
-      # configured in .shared/.golangci.yml).
       - id: golangci-lint-fmt
         args: [--config=.shared/.golangci.yml]
-      # Linter — fast mode (--new-from-rev HEAD). CI runs the full mode.
       - id: golangci-lint
         args: [--config=.shared/.golangci.yml]
 

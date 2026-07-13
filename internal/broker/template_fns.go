@@ -2,6 +2,7 @@ package broker
 
 import (
 	"bufio"
+	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
 	"os"
@@ -14,6 +15,10 @@ import (
 
 func b64Encode(input string) string {
 	return base64.StdEncoding.EncodeToString([]byte(input))
+}
+
+func sha256Hex(input string) string {
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(input)))
 }
 
 func trim(input string) string {
@@ -81,6 +86,7 @@ func strJoin(input []interface{}, separators ...string) string {
 func templateFuncMap() template.FuncMap {
 	return template.FuncMap{
 		"b64encode":   b64Encode,
+		"sha256hex":   sha256Hex,
 		"concat":      concat,
 		"expandEnv":   expandEnv,
 		"env":         readEnv,

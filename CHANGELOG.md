@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/jr200-labs/nats-iam-broker/compare/v1.6.1...v1.7.0) (2026-07-13)
+
+
+### Features
+
+* add SHA-256 template function ([#88](https://github.com/jr200-labs/nats-iam-broker/issues/88)) ([a567686](https://github.com/jr200-labs/nats-iam-broker/commit/a567686a2952a304e3824218215b7824ba687661))
+
 ## [1.6.1](https://github.com/jr200-labs/nats-iam-broker/compare/v1.6.0...v1.6.1) (2026-07-12)
 
 

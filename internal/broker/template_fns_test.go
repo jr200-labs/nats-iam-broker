@@ -199,6 +199,12 @@ func TestRenderAllTemplates(t *testing.T) {
 			expected: "aGVsbG8=",
 		},
 		{
+			name:     "sha256hex function",
+			content:  `{{sha256hex "hello"}}`,
+			mappings: map[string]interface{}{},
+			expected: "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+		},
+		{
 			name:     "trim function",
 			content:  `{{trim "  spaced  "}}`,
 			mappings: map[string]interface{}{},
@@ -348,7 +354,7 @@ plain: no-template`
 
 func TestTemplateFuncMap(t *testing.T) {
 	fm := templateFuncMap()
-	expectedFuncs := []string{"b64encode", "concat", "expandEnv", "env", "readFile", "readNthLine", "strJoin", "trim"}
+	expectedFuncs := []string{"b64encode", "concat", "expandEnv", "env", "readFile", "readNthLine", "sha256hex", "strJoin", "trim"}
 	for _, name := range expectedFuncs {
 		assert.Contains(t, fm, name, "templateFuncMap should contain %s", name)
 	}

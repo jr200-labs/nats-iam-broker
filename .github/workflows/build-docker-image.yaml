@@ -56,6 +56,11 @@ on:
         type: string
         default: |-
           [ "linux/amd64", "linux/arm64" ]
+      build-args:
+        description: "Optional newline-delimited Docker build arguments"
+        required: false
+        type: string
+        default: ""
 
 # Only the caller's TOP-LEVEL permissions cascade into reusable
 # workflows. The reusable's nested jobs need packages:write (push to
@@ -115,6 +120,7 @@ jobs:
       dockerfile: ${{ matrix.dockerfile }}
       context: ${{ matrix.context || '' }}
       build-contexts: ${{ matrix.build_contexts || '' }}
+      build-args: ${{ github.event.inputs.build-args || '' }}
       tag: ${{ fromJson(needs.configure.outputs.context).tag }}
       platforms: ${{ fromJson(needs.configure.outputs.context).platforms || vars.DOCKER_IMAGE_PLATFORMS || '' }}
     secrets:

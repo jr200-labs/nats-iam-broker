@@ -6,6 +6,16 @@ on:
   schedule:
     - cron: "0 17 * * *"
   workflow_dispatch:
+    inputs:
+      runner:
+        description: Runner pool
+        required: false
+        type: choice
+        default: configured
+        options:
+          - configured
+          - self-hosted
+          - github-hosted
 
 # Only the caller's TOP-LEVEL permissions cascade into reusable
 # workflows. The reusable's renovate job needs contents/issues/PR
@@ -20,5 +30,7 @@ permissions:
 jobs:
   renovate:
     uses: jr200-labs/github-action-templates/.github/workflows/renovate.yaml@master
+    with:
+      runner: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner == 'self-hosted' && 'self-hosted' || github.event_name == 'workflow_dispatch' && github.event.inputs.runner == 'github-hosted' && 'ubuntu-latest' || fromJSON(vars.RUNNER_PROFILES)[vars.RUNNER_PROFILE].default }}
     secrets:
       INTEGRATION_APP_PRIVATE_KEY: ${{ secrets.INTEGRATION_APP_PRIVATE_KEY }}

@@ -40,6 +40,15 @@ on:
     types: [release-published]
   workflow_dispatch:
     inputs:
+      runner:
+        description: Runner pool
+        required: false
+        type: choice
+        default: configured
+        options:
+          - configured
+          - self-hosted
+          - github-hosted
       checkout-ref:
         description: "checkout ref"
         required: false
@@ -77,10 +86,11 @@ jobs:
     with:
       event_name: ${{ toJson(github.event_name) }}
       event: ${{ toJson(github.event) }}
+      runner: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner == 'self-hosted' && 'self-hosted' || github.event_name == 'workflow_dispatch' && github.event.inputs.runner == 'github-hosted' && 'ubuntu-latest' || fromJSON(vars.RUNNER_PROFILES)[vars.RUNNER_PROFILE].default }}
 
   discover-images:
     needs: configure
-    runs-on: ${{ fromJSON(vars.RUNNER_PROFILES)[vars.RUNNER_PROFILE].default }}
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner == 'self-hosted' && 'self-hosted' || github.event_name == 'workflow_dispatch' && github.event.inputs.runner == 'github-hosted' && 'ubuntu-latest' || fromJSON(vars.RUNNER_PROFILES)[vars.RUNNER_PROFILE].default }}
     outputs:
       matrix: ${{ steps.gen.outputs.matrix }}
     steps:
@@ -123,6 +133,7 @@ jobs:
       build-args: ${{ github.event.inputs.build-args || '' }}
       tag: ${{ fromJson(needs.configure.outputs.context).tag }}
       platforms: ${{ fromJson(needs.configure.outputs.context).platforms || vars.DOCKER_IMAGE_PLATFORMS || '' }}
+      runner: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner == 'self-hosted' && 'self-hosted' || github.event_name == 'workflow_dispatch' && github.event.inputs.runner == 'github-hosted' && 'ubuntu-latest' || fromJSON(vars.RUNNER_PROFILES)[vars.RUNNER_PROFILE].default }}
     secrets:
       registry_username: ${{ github.actor }}
       registry_token: ${{ secrets.GITHUB_TOKEN }}

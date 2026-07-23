@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.7.1](https://github.com/jr200-labs/nats-iam-broker/compare/v1.7.0...v1.7.1) (2026-07-23)
+
+
+### Bug Fixes
+
+* **deps:** update dependency jr200-labs/github-action-templates to shared-v0.1.30 ([#90](https://github.com/jr200-labs/nats-iam-broker/issues/90)) ([54d8f21](https://github.com/jr200-labs/nats-iam-broker/commit/54d8f21537a8c5f8662206da1ba47c27e652101e))
+* **deps:** update dependency jr200-labs/github-action-templates to shared-v0.1.31 ([#92](https://github.com/jr200-labs/nats-iam-broker/issues/92)) ([749debe](https://github.com/jr200-labs/nats-iam-broker/commit/749debec9b0b88859035a849ea86678de2d50339))
+* **deps:** update dependency jr200-labs/github-action-templates to shared-v0.1.32 ([#93](https://github.com/jr200-labs/nats-iam-broker/issues/93)) ([de3f189](https://github.com/jr200-labs/nats-iam-broker/commit/de3f189a340db038d10aa57ef74bbaa390541f9f))
+* **deps:** update dependency jr200-labs/github-action-templates to shared-v0.1.35 ([#95](https://github.com/jr200-labs/nats-iam-broker/issues/95)) ([f1a82f7](https://github.com/jr200-labs/nats-iam-broker/commit/f1a82f73792257ef0636503d6be5235ee8f25607))
+* **deps:** update module github.com/prometheus/client_golang to v1.24.0 ([#94](https://github.com/jr200-labs/nats-iam-broker/issues/94)) ([7dc5715](https://github.com/jr200-labs/nats-iam-broker/commit/7dc5715b59ca8daf6207b281837a91b08f7442ea))
+
 ## [1.7.0](https://github.com/jr200-labs/nats-iam-broker/compare/v1.6.1...v1.7.0) (2026-07-13)
 
 

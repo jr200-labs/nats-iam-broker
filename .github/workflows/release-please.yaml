@@ -6,6 +6,16 @@ on:
   push:
     branches: [master]
   workflow_dispatch:
+    inputs:
+      runner:
+        description: Runner pool
+        required: false
+        type: choice
+        default: configured
+        options:
+          - configured
+          - self-hosted
+          - github-hosted
 
 # Only the caller's TOP-LEVEL permissions cascade into reusable
 # workflows. Both writes are needed: contents to push tags + create
@@ -19,7 +29,7 @@ jobs:
     uses: jr200-labs/github-action-templates/.github/workflows/release_please.yaml@master
     with:
       target-branch: master
-      runner: ${{ fromJSON(vars.RUNNER_PROFILES)[vars.RUNNER_PROFILE].default }}
+      runner: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner == 'self-hosted' && 'self-hosted' || github.event_name == 'workflow_dispatch' && github.event.inputs.runner == 'github-hosted' && 'ubuntu-latest' || fromJSON(vars.RUNNER_PROFILES)[vars.RUNNER_PROFILE].default }}
     secrets:
       app_private_key: ${{ secrets.INTEGRATION_APP_PRIVATE_KEY }}
 
@@ -31,7 +41,7 @@ jobs:
   dispatch-release-published:
     needs: release
     if: needs.release.outputs.release_created == 'true'
-    runs-on: ${{ fromJSON(vars.RUNNER_PROFILES)[vars.RUNNER_PROFILE].default }}
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner == 'self-hosted' && 'self-hosted' || github.event_name == 'workflow_dispatch' && github.event.inputs.runner == 'github-hosted' && 'ubuntu-latest' || fromJSON(vars.RUNNER_PROFILES)[vars.RUNNER_PROFILE].default }}
     steps:
       - name: Mint app token
         id: app-token

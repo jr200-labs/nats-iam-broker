@@ -5,6 +5,16 @@ name: lint-no-auto-merge
 on:
   pull_request:
   workflow_dispatch:
+    inputs:
+      runner:
+        description: Runner pool
+        required: false
+        type: choice
+        default: configured
+        options:
+          - configured
+          - self-hosted
+          - github-hosted
 
 permissions:
   contents: read
@@ -13,3 +23,5 @@ permissions:
 jobs:
   lint-no-auto-merge:
     uses: jr200-labs/github-action-templates/.github/workflows/lint_no_auto_merge.yaml@master
+    with:
+      runner: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner == 'self-hosted' && 'self-hosted' || github.event_name == 'workflow_dispatch' && github.event.inputs.runner == 'github-hosted' && 'ubuntu-latest' || fromJSON(vars.RUNNER_PROFILES)[vars.RUNNER_PROFILE].default }}

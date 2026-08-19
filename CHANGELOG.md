@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.7.3](https://github.com/jr200-labs/nats-iam-broker/compare/v1.7.2...v1.7.3) (2026-08-19)
+
+
+### Bug Fixes
+
+* **deps:** update dependency jr200-labs/github-action-templates to shared-v0.1.38 ([#104](https://github.com/jr200-labs/nats-iam-broker/issues/104)) ([7b7c075](https://github.com/jr200-labs/nats-iam-broker/commit/7b7c075e3d359f361d1441a7eaf6cd41f7f439c2))
+* **deps:** update go module directive to v1.26.6 ([#103](https://github.com/jr200-labs/nats-iam-broker/issues/103)) ([2d560d9](https://github.com/jr200-labs/nats-iam-broker/commit/2d560d9214f0ac11a3f43ff3b9c6b9a70e073bb1))
+* **deps:** update module github.com/stretchr/testify to v1.12.0 ([#106](https://github.com/jr200-labs/nats-iam-broker/issues/106)) ([2bd025b](https://github.com/jr200-labs/nats-iam-broker/commit/2bd025b9dcbf125f3af314841a3f4b59cbe7c956))
+
 ## [1.7.2](https://github.com/jr200-labs/nats-iam-broker/compare/v1.7.1...v1.7.2) (2026-08-12)
 
 

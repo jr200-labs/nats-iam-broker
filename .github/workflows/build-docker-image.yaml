@@ -37,6 +37,11 @@ run-name: ${{ github.event.client_payload['release-tag'] || format('{0} by @{1}'
 # JSON array such as ["linux/amd64"] or a comma-separated string such as
 # linux/amd64,linux/arm64. workflow_dispatch inputs override the
 # variable for ad-hoc runs.
+#
+# A persistent remote builder is optional. Self-hosted runners can provide
+# BUILDKIT_ENDPOINT, BUILDKIT_SERVER_NAME, and BUILDKIT_TLS_DIR in their runtime
+# environment; the reusable detects them automatically. Other runners retain
+# the per-job docker-container builder and external caches.
 
 on:
   repository_dispatch:

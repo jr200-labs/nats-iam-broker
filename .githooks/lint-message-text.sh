@@ -29,7 +29,10 @@ for raw in $blocked_terms; do
     term="$(printf '%s' "$raw" | xargs)"
     IFS=,
     [ -n "$term" ] || continue
-    if grep -iEqw -- "$term" "$file"; then
+    # Package names, paths, and identifiers may legitimately contain a blocked
+    # term. Match only standalone words, while treating common identifier
+    # separators as part of the surrounding token.
+    if grep -iEq -- "(^|[^[:alnum:]_/@-])${term}([^[:alnum:]_/@-]|$)" "$file"; then
         if [ -z "$hits" ]; then
             hits="$term"
         else

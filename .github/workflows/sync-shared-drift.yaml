@@ -3,14 +3,11 @@
 # Always edit the source workflow in jr200-labs/github-action-templates, then sync.
 name: sync-shared-drift
 
-# If the shared workflow drift check fails, repair the default branch by
-# running sync-shared and opening/updating a normal PR. This keeps generated
-# workflow updates out of unrelated Renovate or feature PRs.
+# Manually repair shared workflow drift on the default branch by running
+# sync-shared and opening or updating a normal PR. Automated shared-ref
+# updates repair their own branches before CI, so this is a recovery tool.
 
 on:
-  workflow_run:
-    workflows: [drift-check]
-    types: [completed]
   workflow_dispatch:
     inputs:
       runner:
@@ -33,7 +30,6 @@ concurrency:
 
 jobs:
   sync-shared-drift:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'failure'
     runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner == 'self-hosted' && 'self-hosted' || github.event_name == 'workflow_dispatch' && github.event.inputs.runner == 'github-hosted' && 'ubuntu-latest' || fromJSON(vars.RUNNER_PROFILES)[vars.RUNNER_PROFILE].default }}
     steps:
       - name: Mint app token

@@ -69,6 +69,7 @@ jobs:
               "sha": "${{ matrix.release.sha }}",
               "tag": "v${{ matrix.release.version }}",
               "release-tag": "${{ matrix.release.tag_name }}",
+              "release-id": ${{ matrix.release.release_id }},
               "component": "${{ matrix.release.component }}",
               "path": "${{ matrix.release.path }}",
               "checkout-ref": "${{ matrix.release.tag_name }}"

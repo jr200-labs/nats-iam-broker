@@ -29,6 +29,7 @@ COMMON_FILES=(
     ".githooks/pre-commit"
     "cog.toml"
 )
+ENTRYPOINTS=("scripts/sync-shared" "scripts/sync-shared-drift-check")
 
 MODE="write"
 case "${1:-}" in
@@ -87,6 +88,48 @@ fetch() {
 fetch_shared() {
     local remote="$1" out="$2"
     fetch_from "$SHARED_BASE_URL" "$remote" "$out"
+}
+
+refresh_entrypoints() {
+    local temp_dir changed_self=0 entry staged
+    temp_dir=$(mktemp -d)
+    for entry in "${ENTRYPOINTS[@]}"; do
+        staged="${temp_dir}/${entry}"
+        if ! fetch "${entry}" "$staged"; then
+            warn "fetch failed: ${entry}"
+            [ "$STRICT" = 1 ] && { rm -rf "$temp_dir"; return 1; }
+            continue
+        fi
+        if [ ! -f "$entry" ] || ! cmp -s "$entry" "$staged"; then
+            mkdir -p "$(dirname "$entry")"
+            mv "$staged" "$entry"
+            chmod +x "$entry"
+            echo "synced: ${entry}"
+            [ "$entry" = "scripts/sync-shared" ] && changed_self=1
+        fi
+    done
+    rm -rf "$temp_dir"
+    if [ "$changed_self" = 1 ] && [ "${SYNC_SHARED_REEXECUTED:-0}" != 1 ]; then
+        export SYNC_SHARED_REEXECUTED=1
+        exec "./scripts/sync-shared" "$@"
+    fi
+}
+
+check_entrypoints() {
+    local temp_dir entry staged result=0
+    temp_dir=$(mktemp -d)
+    for entry in "${ENTRYPOINTS[@]}"; do
+        staged="${temp_dir}/${entry}"
+        if ! fetch "${entry}" "$staged"; then
+            warn "fetch failed: ${entry}"
+            result=1
+        elif [ ! -f "$entry" ] || ! cmp -s "$entry" "$staged"; then
+            echo "drift: ${entry} differs from canonical"
+            result=1
+        fi
+    done
+    rm -rf "$temp_dir"
+    return "$result"
 }
 
 ensure_git_hooks_path() {
@@ -156,6 +199,34 @@ cleanup_legacy_commitlint() {
 has_resolved_workflow() {
     local workflow="$1"
     echo "$WORKFLOWS" | grep -qx "$workflow"
+}
+
+enforce_release_config_policy() {
+    local mode="$1" config="release-please-config.json"
+    has_resolved_workflow macos-app || return 0
+    if [ ! -f "$config" ]; then
+        echo "drift: ${config} missing; macos-app requires an atomic draft release configuration"
+        return 1
+    fi
+    if [ "$mode" = "check" ]; then
+        if ! yq -e '.draft == true and .["force-tag-creation"] == true' "$config" >/dev/null 2>&1; then
+            echo "drift: ${config} must set draft and force-tag-creation to true; run ./scripts/sync-shared"
+            return 1
+        fi
+        return 0
+    fi
+    if yq -o=json '.draft = true | .["force-tag-creation"] = true' "$config" > "${config}.tmp" 2>/dev/null; then
+        if ! cmp -s "$config" "${config}.tmp"; then
+            mv "${config}.tmp" "$config"
+            echo "updated: ${config} macOS releases remain drafts until assets are complete"
+        else
+            rm -f "${config}.tmp"
+        fi
+    else
+        rm -f "${config}.tmp"
+        echo "drift: failed to apply macOS release policy to ${config}"
+        return 1
+    fi
 }
 
 is_gat_commitlint_job() {
@@ -259,6 +330,7 @@ fi
 
 case "$MODE" in
     write|bootstrap)
+        refresh_entrypoints "$@" || exit 1
         mkdir -p "$WORKFLOWS_DIR" scripts
         while IFS= read -r wf; do
             if fetch "workflows/${wf}.yaml" "${WORKFLOWS_DIR}/${wf}.yaml"; then
@@ -292,6 +364,7 @@ case "$MODE" in
         [ -f ".githooks/pre-commit" ] && chmod +x ".githooks/pre-commit"
         cleanup_legacy_commitlint
         cleanup_duplicate_workflow_hygiene_jobs
+        enforce_release_config_policy write || { [ "$STRICT" = 1 ] && exit 1; }
         ensure_git_hooks_path
         if [ "$MODE" = "bootstrap" ]; then
             fetch "scripts/sync-shared" "scripts/sync-shared" || warn "fetch self failed"
@@ -302,6 +375,7 @@ case "$MODE" in
         ;;
     check)
         rc=0
+        check_entrypoints || rc=1
         tmpdir=$(mktemp -d)
         trap "rm -rf $tmpdir" EXIT
         while IFS= read -r wf; do
@@ -371,6 +445,7 @@ case "$MODE" in
             echo "drift: ${WORKFLOWS_DIR}/ci.yaml has duplicate lint-pr-metadata job; run ./scripts/sync-shared"
             rc=1
         fi
+        enforce_release_config_policy check || rc=1
         # Surface unexpected on-disk workflows that aren't part of the resolved set.
         for f in "$WORKFLOWS_DIR"/*.yaml; do
             [ -f "$f" ] || continue

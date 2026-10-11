@@ -106,4 +106,9 @@ jobs:
             esac
           done
 
+          if [ "$(gh api "repos/${GITHUB_REPOSITORY}" --jq '.allow_auto_merge')" != "true" ]; then
+            echo "::notice title=Shared workflow repair PR ready::PR ${PR_NUMBER} is ready for review; repository auto-merge is disabled."
+            exit 0
+          fi
+
           gh pr merge "${PR_NUMBER}" --squash --auto --delete-branch # lint-no-auto-merge:allow

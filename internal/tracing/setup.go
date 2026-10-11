@@ -11,7 +11,6 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
-	otellog "go.opentelemetry.io/otel/log/global"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/log"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -117,7 +116,7 @@ func Setup(ctx context.Context, serviceName, serviceVersion string) (*Result, er
 				log.WithProcessor(log.NewBatchProcessor(logExporter)),
 				log.WithResource(res),
 			)
-			otellog.SetLoggerProvider(lp)
+			otel.SetLoggerProvider(lp)
 			zapCore = otelzap.NewCore(serviceName, otelzap.WithLoggerProvider(lp))
 			zap.L().Info("OTel logging configured", zap.String("exporter", "otlp-grpc"))
 		}

@@ -271,11 +271,13 @@ resolve_workflows() {
         if ! fetch "groups/${group}.yaml" "$group_file"; then
             warn "fetch failed: groups/${group}.yaml"
             rm -f "$group_file"
-            [ "$STRICT" = 1 ] && exit 1
-            continue
+            return 1
         fi
         local includes
-        includes=$(yq -r '.includes[]' "$group_file")
+        if ! includes=$(yq -r '.includes[]' "$group_file"); then
+            rm -f "$group_file"
+            return 1
+        fi
         rm -f "$group_file"
         resolved="${resolved}${includes}"$'\n'
     done <<<"$groups"
@@ -283,7 +285,11 @@ resolve_workflows() {
     echo "$resolved" | sort -u | grep -v '^$'
 }
 
-WORKFLOWS=$(resolve_workflows)
+if ! WORKFLOWS=$(resolve_workflows); then
+    warn "group resolution incomplete; keeping existing workflows"
+    [ "$STRICT" = 1 ] && exit 1
+    exit 0
+fi
 [ -z "$WORKFLOWS" ] && die "no workflows resolved"
 
 # Resolve optional repository-relative supporting files declared by groups.
@@ -332,14 +338,30 @@ case "$MODE" in
     write|bootstrap)
         refresh_entrypoints "$@" || exit 1
         mkdir -p "$WORKFLOWS_DIR" scripts
+        workflows_synced=1
         while IFS= read -r wf; do
             if fetch "workflows/${wf}.yaml" "${WORKFLOWS_DIR}/${wf}.yaml"; then
                 echo "synced: ${wf}.yaml"
             else
                 warn "fetch failed: workflows/${wf}.yaml"
+                workflows_synced=0
                 [ "$STRICT" = 1 ] && exit 1
             fi
         done <<<"$WORKFLOWS"
+        # Retired or deselected shared callers must stop triggering. Explicitly
+        # marked generated files are owned by sync; keep bespoke workflows.
+        if [ "$workflows_synced" = 1 ]; then
+            for local_workflow in "$WORKFLOWS_DIR"/*.yaml; do
+                [ -f "$local_workflow" ] || continue
+                workflow_name=$(basename "$local_workflow" .yaml)
+                [[ "$workflow_name" == bespoke_* ]] && continue
+                has_resolved_workflow "$workflow_name" && continue
+                if [ "$(head -n 1 "$local_workflow")" = "# GENERATED/SHARED WORKFLOW: copied into consuming repos by sync-shared." ]; then
+                    rm "$local_workflow"
+                    echo "removed: ${local_workflow} (no longer in resolved shared set)"
+                fi
+            done
+        fi
         while IFS= read -r file; do
             [ -z "$file" ] && continue
             validate_file_path "$file"

@@ -9,16 +9,6 @@ on:
   push:
     branches: [master]
   workflow_dispatch:
-    inputs:
-      runner:
-        description: Runner pool
-        required: false
-        type: choice
-        default: configured
-        options:
-          - configured
-          - self-hosted
-          - github-hosted
 
 permissions:
   contents: read
@@ -28,4 +18,4 @@ jobs:
   ci:
     uses: jr200-labs/github-action-templates/.github/workflows/ci_go.yaml@master
     with:
-      runner: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner == 'self-hosted' && 'self-hosted' || github.event_name == 'workflow_dispatch' && github.event.inputs.runner == 'github-hosted' && 'ubuntu-latest' || fromJSON(vars.RUNNER_PROFILES)[vars.RUNNER_PROFILE].default }}
+      runner: ${{ fromJSON(vars.RUNNER_PROFILES)[vars.RUNNER_PROFILE].default }}

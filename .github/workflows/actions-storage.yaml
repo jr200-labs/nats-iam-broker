@@ -1,0 +1,28 @@
+# GENERATED/SHARED WORKFLOW: copied into consuming repos by sync-shared.
+# Do not edit in consuming repos; change jr200-labs/github-action-templates and sync.
+name: actions-storage
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: Delete artifacts older than five days from completed runs
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: actions-storage
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    uses: jr200-labs/github-action-templates/.github/workflows/cleanup_actions_artifacts.yaml@master
+    with:
+      apply: ${{ github.event_name == 'schedule' || inputs.apply }}
+      runner: ${{ fromJSON(vars.RUNNER_PROFILES)[vars.RUNNER_PROFILE].default }}

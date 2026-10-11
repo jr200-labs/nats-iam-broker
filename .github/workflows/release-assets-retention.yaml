@@ -1,0 +1,23 @@
+# GENERATED/SHARED WORKFLOW: copied into consuming repos by sync-shared.
+# Change jr200-labs/github-action-templates and sync.
+name: release-assets-retention
+on:
+  schedule:
+    - cron: '43 4 * * *'
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: Delete superseded release assets older than 14 days
+        type: boolean
+        default: false
+permissions:
+  contents: write
+concurrency:
+  group: release-assets-retention
+  cancel-in-progress: false
+jobs:
+  cleanup:
+    uses: jr200-labs/github-action-templates/.github/workflows/cleanup_release_assets.yaml@master
+    with:
+      apply: ${{ github.event_name == 'schedule' || inputs.apply }}
+      runner: ${{ fromJSON(vars.RUNNER_PROFILES)[vars.RUNNER_PROFILE].default }}

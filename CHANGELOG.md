@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.7.5](https://github.com/jr200-labs/nats-iam-broker/compare/v1.7.4...v1.7.5) (2026-10-11)
+
+
+### Bug Fixes
+
+* **deps:** update all non-major dependencies ([#117](https://github.com/jr200-labs/nats-iam-broker/issues/117)) ([e4d29a8](https://github.com/jr200-labs/nats-iam-broker/commit/e4d29a8856aedfd82f77176471d2dcf0bb4f3a14))
+* **deps:** update dependencies and migrate OpenTelemetry logger API ([#122](https://github.com/jr200-labs/nats-iam-broker/issues/122)) ([9994b38](https://github.com/jr200-labs/nats-iam-broker/commit/9994b38a3ff45f3062b3d8f076aa9728b97842e7))
+* **deps:** update dependency jr200-labs/github-action-templates to shared-v0.1.54 ([#113](https://github.com/jr200-labs/nats-iam-broker/issues/113)) ([a6f7d60](https://github.com/jr200-labs/nats-iam-broker/commit/a6f7d60a44f148cfb9ecd4118c35f2d259e50a12))
+* **deps:** update dependency jr200-labs/github-action-templates to shared-v0.1.59 ([#116](https://github.com/jr200-labs/nats-iam-broker/issues/116)) ([07c8d6d](https://github.com/jr200-labs/nats-iam-broker/commit/07c8d6d6acb69b96447405f938613d306427f92e))
+* **deps:** update dependency jr200-labs/github-action-templates to shared-v0.1.65 ([#118](https://github.com/jr200-labs/nats-iam-broker/issues/118)) ([8fff771](https://github.com/jr200-labs/nats-iam-broker/commit/8fff7719818bc0e5f471a1d7bc06acf7d2401db4))
+* **deps:** update dependency jr200-labs/github-action-templates to shared-v0.1.74 ([#121](https://github.com/jr200-labs/nats-iam-broker/issues/121)) ([7e589c3](https://github.com/jr200-labs/nats-iam-broker/commit/7e589c315a93546128207dd2bca8601f2e865aa8))
+* **deps:** update dependency jr200-labs/github-action-templates to shared-v0.1.82 ([#123](https://github.com/jr200-labs/nats-iam-broker/issues/123)) ([1b79c69](https://github.com/jr200-labs/nats-iam-broker/commit/1b79c69c0191dfe10294382536fe5da1cac54409))
+* **deps:** update module golang.org/x/oauth2 to v0.37.0 ([#115](https://github.com/jr200-labs/nats-iam-broker/issues/115)) ([a110002](https://github.com/jr200-labs/nats-iam-broker/commit/a110002fa8be76198e51ee9115feb4dd99540411))
+
 ## [1.7.4](https://github.com/jr200-labs/nats-iam-broker/compare/v1.7.3...v1.7.4) (2026-09-07)
 
 

@@ -1,0 +1,16 @@
+# GENERATED/SHARED WORKFLOW: copied into consuming repos by sync-shared.
+# Do not edit in consuming repos; change jr200-labs/github-action-templates and sync.
+name: lint-workflow-runners
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint-workflow-runners:
+    uses: jr200-labs/github-action-templates/.github/workflows/lint_workflow_runners.yaml@master
+    with:
+      runner: ${{ fromJSON(vars.RUNNER_PROFILES)[vars.RUNNER_PROFILE].default }}

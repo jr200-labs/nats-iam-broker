@@ -1,0 +1,19 @@
+version: 1
+artifacts:
+  - component: "."
+    publisher: docker
+    type: docker
+    name: ghcr.io/jr200-labs/nats-iam-broker
+    renovate:
+      repository: whengas/whengas-iac
+      dependencies:
+        - ghcr.io/jr200-labs/nats-iam-broker
+        - jr200-labs/nats-iam-broker
+  - component: "."
+    publisher: helm
+    type: helm
+    name: nats-iam-broker
+    renovate:
+      repository: whengas/whengas-iac
+      dependencies:
+        - nats-iam-broker

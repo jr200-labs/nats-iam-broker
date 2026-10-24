@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.7.6](https://github.com/jr200-labs/nats-iam-broker/compare/v1.7.5...v1.7.6) (2026-10-24)
+
+
+### Bug Fixes
+
+* **deps:** update actions/create-github-app-token action to v3.3.0 ([#126](https://github.com/jr200-labs/nats-iam-broker/issues/126)) ([e846501](https://github.com/jr200-labs/nats-iam-broker/commit/e84650198bc872d135943f1323dc733f2251de59))
+* **deps:** update actions/create-github-app-token action to v3.3.0 ([#130](https://github.com/jr200-labs/nats-iam-broker/issues/130)) ([3178dde](https://github.com/jr200-labs/nats-iam-broker/commit/3178dde3f8e2c53790c05496d04c48744c5bc465))
+* **deps:** update all non-major dependencies ([#119](https://github.com/jr200-labs/nats-iam-broker/issues/119)) ([9ace456](https://github.com/jr200-labs/nats-iam-broker/commit/9ace4565cf1befe102aa58c756b10dc5893ab215))
+* **deps:** update dependency jr200-labs/github-action-templates to shared-v0.1.83 ([#125](https://github.com/jr200-labs/nats-iam-broker/issues/125)) ([d03f561](https://github.com/jr200-labs/nats-iam-broker/commit/d03f561ec476acc7f213b9ce04ff7510612ef9ed))
+* **deps:** update dependency jr200-labs/github-action-templates to shared-v0.1.87 ([#129](https://github.com/jr200-labs/nats-iam-broker/issues/129)) ([ca17773](https://github.com/jr200-labs/nats-iam-broker/commit/ca177736dd7deb11f1421d3929a2cb9f283683fd))
+
 ## [1.7.5](https://github.com/jr200-labs/nats-iam-broker/compare/v1.7.4...v1.7.5) (2026-10-11)
 
 

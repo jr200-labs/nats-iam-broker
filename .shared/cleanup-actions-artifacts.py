@@ -153,7 +153,16 @@ def prune(api, now, apply=False, confirm=None):
         if apply:
             log(f"Deleting artifact {item['id']}; verifying absence next")
             api.request(path, "DELETE")
-            if api.request(path) is not None:
+            # A successful DELETE can precede visibility of the removal in GET.
+            # Retry only the observation; do not repeat the mutation or count
+            # reclaimed bytes until absence is confirmed.
+            for delay in (0, 1, 2, 4):
+                if delay:
+                    log(f"Artifact {item['id']} still visible; checking again in {delay}s")
+                    time.sleep(delay)
+                if api.request(path) is None:
+                    break
+            else:
                 raise RuntimeError("artifact deletion did not converge")
             deleted += 1
             reclaimed += item["size_in_bytes"]

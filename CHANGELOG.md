@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.8.0](https://github.com/jr200-labs/nats-iam-broker/compare/v1.7.8...v1.8.0) (2026-11-10)
+
+
+### Features
+
+* **auth:** project verified identities and enforce scoped authorization ([#140](https://github.com/jr200-labs/nats-iam-broker/issues/140)) ([10333ac](https://github.com/jr200-labs/nats-iam-broker/commit/10333acffd004d736c54d8e5262d935d42f963aa))
+
+
+### Bug Fixes
+
+* **auth:** preserve signed claims and reserve projection context ([#145](https://github.com/jr200-labs/nats-iam-broker/issues/145)) ([f3f490b](https://github.com/jr200-labs/nats-iam-broker/commit/f3f490bc8905d8e2168f887400852f727988cb36))
+
 ## [1.7.8](https://github.com/jr200-labs/nats-iam-broker/compare/v1.7.7...v1.7.8) (2026-11-10)
 
 

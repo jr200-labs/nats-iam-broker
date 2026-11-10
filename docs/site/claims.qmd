@@ -49,3 +49,9 @@ Any claim in the IdP JWT that is not in the standard list above is available in 
 When `idp.user_info.enabled` is `true`, the client must provide an `access_token`. The broker calls the OIDC UserInfo endpoint and merges the verified returned fields into the context. The available fields are provider-dependent but commonly include `phone_number`, `address`, and additional profile data.
 
 A missing access token, failed fetch or UserInfo subject different from the original signed ID token refuses the connection. A present `at_hash` must validate; accepting an absent hash requires explicit `user_info.require_at_hash: false`. With user projection, ID-token and UserInfo claims are kept in separate namespaces rather than merged, and UserInfo is required whenever a rule references it.
+
+## Protected identity fields
+
+The original signed ID token is authoritative for `sub`, `iat`, and `exp` throughout verification, enrichment, role matching and permission rendering. Custom mappings targeting those fields are ignored; their source custom claims remain available under their original names. UserInfo does not replace the three protected fields.
+
+The top-level `user` name in bindings and templates is reserved for a verified projection. Raw claims cannot supply it when a provider has no projection. A projection can still read an original raw claim through `id_token.user` or `userinfo.user`.

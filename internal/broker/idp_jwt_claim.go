@@ -44,6 +44,17 @@ var standardClaims = func() map[string]bool {
 	return claims
 }()
 
+// protectedRegisteredClaim names fields whose authority is the signed ID token,
+// never a custom alias or an enrichment response.
+func protectedRegisteredClaim(name string) bool {
+	switch name {
+	case "sub", "iat", "exp":
+		return true
+	default:
+		return false
+	}
+}
+
 // https://www.iana.org/assignments/jwt/jwt.xhtml#claims
 type IdpJwtClaims struct {
 	signedExpiry      int64
@@ -109,6 +120,9 @@ func (j *IdpJwtClaims) toMap() map[string]interface{} {
 
 	// Add custom claims
 	for k, v := range j.CustomClaims {
+		if protectedRegisteredClaim(k) {
+			continue
+		}
 		result[k] = v
 	}
 
@@ -255,6 +269,11 @@ func (j *IdpJwtClaims) fromMap(m map[string]interface{}, customMapping map[strin
 		// Apply custom mapping if available
 		if customMapping != nil {
 			if mappedKey, ok := customMapping[k]; ok {
+				if protectedRegisteredClaim(mappedKey) {
+					// Ignore the redirect, retaining the original custom claim.
+					j.CustomClaims[k] = v
+					continue
+				}
 				j.CustomClaims[mappedKey] = v
 			} else {
 				j.CustomClaims[k] = v

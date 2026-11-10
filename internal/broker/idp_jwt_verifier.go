@@ -159,6 +159,7 @@ func (v *IdpJwtVerifier) verifyJWT(ctx context.Context, token string, customMapp
 
 	// Store all claims in CustomClaims using the custom mapping
 	claims.fromMap(rawClaims, customMapping)
+	claims.protectRegisteredClaims(idToken)
 
 	err = v.ValidateTimes(idToken.IssuedAt, idToken.Expiry)
 	if err != nil {
@@ -265,4 +266,16 @@ func (v *IdpJwtVerifier) GetUserInfo(ctx context.Context, accessToken string, id
 	}
 
 	return userInfoClaims, nil
+}
+
+// protectRegisteredClaims restores the signed snapshot for every consumer of
+// the claims, including raw role matches and request config templates.
+func (claims *IdpJwtClaims) protectRegisteredClaims(token *oidc.IDToken) {
+	claims.Subject = token.Subject
+	claims.IssuedAt = token.IssuedAt.Unix()
+	claims.Expiry = token.Expiry.Unix()
+	claims.signedExpiry = token.Expiry.Unix()
+	for _, key := range []string{"sub", "iat", "exp"} {
+		delete(claims.CustomClaims, key)
+	}
 }

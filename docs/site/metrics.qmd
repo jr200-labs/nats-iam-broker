@@ -36,6 +36,7 @@ server:
 | `nats_iam_broker_auth_request_duration_seconds` | Histogram | `status` | Auth request processing duration |
 | `nats_iam_broker_auth_requests_in_flight` | Gauge | - | Requests currently being processed |
 | `nats_iam_broker_tokens_minted_total` | Counter | `account`, `idp` | NATS user JWTs minted, by account and IDP |
+| `nats_iam_broker_user_projection_errors_total` | Counter | `idp`, `kind` | User projection refusals, including freshness failures at final issuance; labels contain provider keys and bounded error kinds, never claim values |
 | `nats_iam_broker_idp_verify_total` | Counter | `idp`, `status` | IDP JWT verification attempts |
 | `nats_iam_broker_idp_verify_duration_seconds` | Histogram | `idp` | IDP JWT verification duration |
 | `nats_iam_broker_request_errors_total` | Counter | `stage` | Request processing errors (`decrypt`, `decode`) |

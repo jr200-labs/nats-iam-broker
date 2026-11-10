@@ -51,7 +51,7 @@ jobs:
 
       - name: Create drift repair PR
         id: create-pull-request
-        uses: peter-evans/create-pull-request@v8.1.1
+        uses: peter-evans/create-pull-request@v8.1.2
         with:
           token: ${{ steps.app-token.outputs.token }}
           branch: chore/sync-shared-workflows

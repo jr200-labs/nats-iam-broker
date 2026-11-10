@@ -53,6 +53,7 @@ func (rbs *RoleBindingStrategy) UnmarshalYAML(unmarshal func(interface{}) error)
 
 // Struct definitions
 type Rbac struct {
+	UserProjection              *UserProjection     `yaml:"user_projection"`
 	Accounts                    []UserAccountInfo   `yaml:"user_accounts"`
 	RoleBinding                 []RoleBinding       `yaml:"role_binding"`
 	Roles                       []Role              `yaml:"roles"`
@@ -122,6 +123,7 @@ func (r *Rbac) discoverAccounts() ([]UserAccountInfo, error) {
 }
 
 type UserAccountInfo struct {
+	Scoped      bool   `yaml:"scoped"`
 	Name        string `yaml:"name"`
 	PublicKey   string `yaml:"public_key"`
 	SigningNKey NKey   `yaml:"signing_nkey"`

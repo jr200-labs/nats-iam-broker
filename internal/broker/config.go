@@ -89,6 +89,8 @@ type ServiceAccount struct {
 }
 
 type Idp struct {
+	Key               string               `yaml:"key"`
+	UserProjection    *UserProjection      `yaml:"user_projection"`
 	Description       string               `yaml:"description"`
 	IssuerURL         string               `yaml:"issuer_url" validate:"required"`
 	ClientID          string               `yaml:"client_id" validate:"required"`
@@ -188,6 +190,10 @@ func NewConfigManager(files []string) (*ConfigManager, error) {
 		baseConfig.NATS.TokenExpiryBounds.Max.Duration = DefaultTokenExpiryBoundsUpper
 	}
 
+	if err := baseConfig.compileProjections(); err != nil {
+		return nil, err
+	}
+
 	// Pre-compile validator with custom validations
 	v := validator.New()
 	if err := v.RegisterValidation("semver", validateSemVer); err != nil {
@@ -274,6 +280,11 @@ func (cm *ConfigManager) GetConfig(mappings map[string]interface{}) (*Config, er
 	// Update IDP list and RBAC
 	cfg.Idp = tempCfg.Idp
 	cfg.Rbac = tempCfg.Rbac
+	// Projection rules are literal and compiled once, never per-request templates.
+	cfg.Rbac.UserProjection = cm.baseConfig.Rbac.UserProjection
+	for i := range cfg.Idp {
+		cfg.Idp[i].UserProjection = cm.baseConfig.Idp[i].UserProjection
+	}
 
 	// Validate the final config using pre-compiled validator
 	if err := cm.validate.Struct(&cfg); err != nil {
@@ -319,6 +330,10 @@ func (cm *ConfigManager) GetConfig(mappings map[string]interface{}) (*Config, er
 				zap.Int("binding_index", i),
 				zap.String("user_account", rb.Account))
 		}
+	}
+
+	if err := cfg.validateScopedAccounts(); err != nil {
+		return nil, err
 	}
 
 	// Attach shared expression cache for role binding evaluation

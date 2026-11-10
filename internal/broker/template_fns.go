@@ -197,6 +197,11 @@ func (tc *templateCache) renderYAMLValue(value interface{}, mappings map[string]
 	case map[string]interface{}:
 		result := make(map[string]interface{}, len(typed))
 		for key, item := range typed {
+			// Projection expressions must never invoke config-rendering functions.
+			if key == "user_projection" {
+				result[key] = item
+				continue
+			}
 			renderedKey := tc.renderAll(key, mappings)
 			if _, exists := result[renderedKey]; exists {
 				return nil, fmt.Errorf("template rendering produced duplicate YAML key %q", renderedKey)

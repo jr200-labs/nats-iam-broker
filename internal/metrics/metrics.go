@@ -34,6 +34,7 @@ const (
 
 // Metrics holds all prometheus metrics for the broker.
 type Metrics struct {
+	UserProjectionErrors *prometheus.CounterVec
 	AuthRequestsTotal    *prometheus.CounterVec
 	AuthRequestDuration  *prometheus.HistogramVec
 	AuthRequestsInFlight prometheus.Gauge
@@ -47,6 +48,9 @@ type Metrics struct {
 // New creates and registers all prometheus metrics.
 func New() *Metrics {
 	m := &Metrics{
+		UserProjectionErrors: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: namespace, Name: "user_projection_errors_total", Help: "Projection refusals by IdP and bounded error kind.",
+		}, []string{labelIDP, "kind"}),
 		AuthRequestsTotal: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
 				Namespace: namespace,
@@ -115,6 +119,7 @@ func New() *Metrics {
 	}
 
 	prometheus.MustRegister(
+		m.UserProjectionErrors,
 		m.AuthRequestsTotal,
 		m.AuthRequestDuration,
 		m.AuthRequestsInFlight,

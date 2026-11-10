@@ -3,6 +3,7 @@ package broker
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -70,8 +71,21 @@ func handleAuthRequest(
 
 	// -- verify IDP --
 	verifyCtx, verifySpan := getTracer().Start(reqCtx, "auth.callout.verify_idp")
-	reqClaims, matchedVerifier, _, err := verifyAndEnrich(verifyCtx, m, idpRawJwt, tokenReq, idpVerifiers)
+	reqClaims, matchedVerifier, _, err := verifyAndEnrich(verifyCtx, m, idpRawJwt, tokenReq, idpVerifiers, configManager, request)
 	if err != nil {
+		var projectionErr *ProjectionError
+		if errors.As(err, &projectionErr) {
+			idpKey := "unknown"
+			if matchedVerifier != nil {
+				idpKey = matchedVerifier.config.Key
+			}
+			if m != nil {
+				m.UserProjectionErrors.WithLabelValues(idpKey, projectionErr.Kind).Inc()
+			}
+			zap.L().Warn("user projection refused", zap.String("kind", projectionErr.Kind), zap.String("output", projectionErr.Output))
+			// No claims or evaluator details are returned to the client.
+			err = fmt.Errorf("authorization failed")
+		}
 		verifySpan.SetStatus(codes.Error, err.Error())
 		verifySpan.RecordError(err)
 		verifySpan.End()
@@ -167,6 +181,8 @@ func verifyAndEnrich(
 	idpRawJwt string,
 	tokenReq TokenRequest,
 	idpVerifiers []IdpAndJwtVerifier,
+	configManager *ConfigManager,
+	request *jwt.AuthorizationRequestClaims,
 ) (*IdpJwtClaims, *IdpAndJwtVerifier, TokenRequest, error) {
 	verifyStart := time.Now()
 	reqClaims, matchedVerifier, verifiedIDToken, err := runVerification(ctx, idpRawJwt, idpVerifiers)
@@ -180,6 +196,19 @@ func verifyAndEnrich(
 		idpDesc := matchedVerifier.config.Description
 		m.IDPVerifyTotal.WithLabelValues(idpDesc, metrics.StatusSuccess).Inc()
 		m.IDPVerifyDuration.WithLabelValues(idpDesc).Observe(time.Since(verifyStart).Seconds())
+	}
+
+	if rules := configManager.projection(matchedVerifier.config); rules != nil {
+		user, err := projectVerifiedUser(ctx, rules, reqClaims, matchedVerifier, verifiedIDToken, tokenReq, request)
+		if err != nil {
+			return nil, matchedVerifier, tokenReq, err
+		}
+		reqClaims.projected = user
+		// Keep the legacy claim context for non-projection bindings, but protect
+		// minted expiry from mappings. Projection itself never sees client facts.
+		reqClaims.Expiry = verifiedIDToken.Expiry.Unix()
+		reqClaims.signedExpiry = verifiedIDToken.Expiry.Unix()
+		return reqClaims, matchedVerifier, tokenReq, nil
 	}
 
 	if matchedVerifier.config.UserInfo.Enabled {
@@ -212,13 +241,17 @@ func buildUserClaims(
 	matchedVerifier *IdpAndJwtVerifier,
 	request *jwt.AuthorizationRequestClaims,
 ) (*jwt.UserClaims, nkeys.KeyPair, *UserAccountInfo, string, error) {
-	cfgForRequest, err := configManager.GetConfig(reqClaims.toMap())
+	mappings := reqClaims.toMap()
+	if reqClaims.projected != nil {
+		mappings["user"] = reqClaims.projected.mapping()
+	}
+	cfgForRequest, err := configManager.GetConfig(mappings)
 	if err != nil {
 		zap.L().Error("error rendering config against idp-jwt", zap.Error(err))
 		return nil, nil, nil, metrics.StatusError, err
 	}
 
-	userAccountName, permissions, limits, roleBindingTokenMaxExpiry, err := cfgForRequest.lookupUserAccount(reqClaims.toMap())
+	userAccountName, permissions, limits, roleBindingTokenMaxExpiry, err := cfgForRequest.lookupUserAccount(mappings)
 	if err != nil {
 		zap.L().Error("error looking up user account", zap.Error(err))
 		return nil, nil, nil, metrics.StatusDenied, err
@@ -250,19 +283,40 @@ func buildUserClaims(
 	claims.Audience = userAccountName
 	claims.Name = request.ConnectOptions.Username
 	claims.IssuerAccount = userAccountInfo.PublicKey
+	idpExpiry := reqClaims.Expiry
+	if reqClaims.projected != nil {
+		idpExpiry = reqClaims.signedExpiry
+	}
 	claims.Expires = calculateExpiration(
 		cfgForRequest,
-		reqClaims.Expiry,
+		idpExpiry,
 		&matchedVerifier.config.ValidationSpec.TokenExpiryBounds,
 		&roleBindingTokenMaxExpiry,
 	)
+	if userAccountInfo.Scoped && reqClaims.projected == nil {
+		return nil, nil, nil, metrics.StatusDenied, fmt.Errorf("scoped issuance requires projected identity")
+	}
 	claims.Permissions = *permissions
 	claims.Limits = *limits
-	claims.Tags.Add(fmt.Sprintf("email: %s, name: %s, idp: %s, expires: %s",
-		reqClaims.Email,
-		reqClaims.Name,
-		matchedVerifier.config.Description,
-		time.Unix(claims.Expires, 0).Format(time.RFC3339)))
+	if userAccountInfo.Scoped {
+		claims.UserPermissionLimits = jwt.UserPermissionLimits{}
+	}
+	if user := reqClaims.projected; user != nil {
+		claims.Name = user.Name
+		claims.Tags.Add(user.jwtTags()...)
+		if user.FreshUntil.Unix() < claims.Expires {
+			claims.Expires = user.FreshUntil.Unix()
+		}
+		if claims.Expires <= time.Now().Unix() {
+			return nil, nil, nil, metrics.StatusDenied, fmt.Errorf("authorization failed")
+		}
+	} else {
+		claims.Tags.Add(fmt.Sprintf("email: %s, name: %s, idp: %s, expires: %s",
+			reqClaims.Email,
+			reqClaims.Name,
+			matchedVerifier.config.Description,
+			time.Unix(claims.Expires, 0).Format(time.RFC3339)))
+	}
 
 	return claims, userAccountInfo.SigningNKey.KeyPair, userAccountInfo, "", nil
 }
@@ -288,6 +342,7 @@ func publishAuditEvent(
 		"account_pub_nkey": userAccountInfo.PublicKey,
 		"user_pub_nkey":    request.UserNkey,
 		"username":         request.ConnectOptions.Username,
+		"authorized_user":  claims.Name,
 		"email":            reqClaims.Email,
 		"name":             reqClaims.Name,
 		"idp":              matchedVerifier.config.Description,

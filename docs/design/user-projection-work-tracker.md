@@ -72,3 +72,13 @@ Completed follow-up acceptance:
 - The strict `at_hash` default is preserved. Optional-hash providers require explicit policy configuration and exact subject matching; that choice does not verify the exact token pair without the hash.
 
 Latest publication and fresh CI results are recorded on PR #140 and in the task conversation. Long-running fuzz campaigns and deployment-specific topology/ack-format testing remain operational acceptance rather than claims made by this bounded run.
+
+## Attachment review fixes (35645)
+
+- [x] Preserve signed `sub`, `iat`, and `exp` throughout the full auth pipeline. Ignore custom mapping redirects to those names, prevent custom-map shadowing during serialization, restore registered fields from the verified token after ingestion/enrichment, and add server metadata directly without re-applying mappings.
+- [x] Reserve `user` unconditionally in the binding/template context, including a legacy provider alongside a projected provider. Keep mixed-provider configurations supported; only an effective verified projection can populate that name.
+- [x] Add `nats_iam_broker_user_projection_errors_total` to the published metrics table, with type Counter and labels `idp`, `kind`.
+
+Regression tests first reproduced alias overwrites and forged raw-user authorization. Unit tests cover repeated mapping round trips, protected serialization, and the separate binding/template paths. Embedded-server tests exercise signed claims through both legacy UserInfo and projected issuance, and reject a forged user object from the unprojected provider in a mixed-provider configuration while accepting the projected provider.
+
+Verification for attachment fixes: focused regressions failed before the change and pass afterward; `make test`, `make test-integration`, broker/metrics and integration race tests, `go vet ./...`, static build, shared Go lint (zero issues), formatter diff and `git diff --check` pass. Root `preview-checkpoint.json` remains absent.

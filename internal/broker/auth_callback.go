@@ -92,11 +92,12 @@ func handleAuthRequest(
 	verifySpan.SetAttributes(attribute.String("auth.idp", matchedVerifier.config.Description))
 	verifySpan.End()
 
-	// Merge in client information from the request
-	reqJwtClaims := reqClaims.toMap()
-	reqJwtClaims["client_id"] = request.ClientInformation.User        // Sentinel ID
-	reqJwtClaims["also_known_as"] = request.ClientInformation.NameTag // Sentinel name
-	reqClaims.fromMap(reqJwtClaims, matchedVerifier.config.CustomMapping)
+	// Add server-vouched metadata directly. Re-applying custom_mapping here
+	// can reinterpret claims that have already been mapped and verified.
+	reqClaims.ClientID = request.ClientInformation.User
+	reqClaims.AlsoKnownAs = request.ClientInformation.NameTag
+	delete(reqClaims.CustomClaims, "client_id")
+	delete(reqClaims.CustomClaims, "also_known_as")
 
 	if srvCtx.Options.LogSensitive {
 		zap.L().Debug("reqClaims", zap.Any("claims", reqClaims.toMap()))
@@ -200,16 +201,14 @@ func verifyAndEnrich(
 		m.IDPVerifyDuration.WithLabelValues(idpDesc).Observe(time.Since(verifyStart).Seconds())
 	}
 
-	reqClaims.signedExpiry = verifiedIDToken.Expiry.Unix()
+	reqClaims.protectRegisteredClaims(verifiedIDToken)
 	if rules := configManager.projection(matchedVerifier.config); rules != nil {
 		user, err := projectVerifiedUser(ctx, rules, reqClaims, matchedVerifier, verifiedIDToken, tokenReq, request)
 		if err != nil {
 			return nil, matchedVerifier, tokenReq, err
 		}
 		reqClaims.projected = user
-		// Keep the legacy claim context for non-projection bindings, but protect
-		// minted expiry from mappings. Projection itself never sees client facts.
-		reqClaims.Expiry = verifiedIDToken.Expiry.Unix()
+		// The signed snapshot remains authoritative in the raw matching context too.
 		return reqClaims, matchedVerifier, tokenReq, nil
 	}
 
@@ -222,10 +221,13 @@ func verifyAndEnrich(
 		}
 		claims := reqClaims.toMap()
 		for key, value := range info {
+			if protectedRegisteredClaim(key) {
+				continue
+			}
 			claims[key] = value
 		}
 		reqClaims.fromMap(claims, matchedVerifier.config.CustomMapping)
-		reqClaims.Expiry = verifiedIDToken.Expiry.Unix()
+		reqClaims.protectRegisteredClaims(verifiedIDToken)
 	}
 
 	return reqClaims, matchedVerifier, tokenReq, nil
@@ -240,6 +242,9 @@ func buildUserClaims(
 	request *jwt.AuthorizationRequestClaims,
 ) (*jwt.UserClaims, nkeys.KeyPair, *UserAccountInfo, string, error) {
 	mappings := reqClaims.toMap()
+	// This name is reserved even for a provider without a projection. Raw user
+	// claims remain accessible only inside projection input namespaces.
+	delete(mappings, "user")
 	if reqClaims.projected != nil {
 		mappings["user"] = reqClaims.projected.mapping()
 	}

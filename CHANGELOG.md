@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.7.8](https://github.com/jr200-labs/nats-iam-broker/compare/v1.7.7...v1.7.8) (2026-11-10)
+
+
+### Bug Fixes
+
+* **deps:** repair non-major updates for compact JWE parsing ([#143](https://github.com/jr200-labs/nats-iam-broker/issues/143)) ([7735c76](https://github.com/jr200-labs/nats-iam-broker/commit/7735c768a9a9bffb920c7508e9ab85472e7bee07))
+* **deps:** update all non-major dependencies ([#136](https://github.com/jr200-labs/nats-iam-broker/issues/136)) ([4bbf5ef](https://github.com/jr200-labs/nats-iam-broker/commit/4bbf5efabc253c955e0323c392c7b0c58e5b319e))
+* **deps:** update dependency jr200-labs/github-action-templates to shared-v0.1.93 ([#135](https://github.com/jr200-labs/nats-iam-broker/issues/135)) ([ec93cb3](https://github.com/jr200-labs/nats-iam-broker/commit/ec93cb337799f4ec10127da218f2e3a65060e9ca))
+* **deps:** update dependency jr200-labs/github-action-templates to shared-v0.1.95 ([#138](https://github.com/jr200-labs/nats-iam-broker/issues/138)) ([1ec321b](https://github.com/jr200-labs/nats-iam-broker/commit/1ec321b7ff269474342e2edaf0c546a19e3e2d4c))
+* **deps:** update dependency jr200-labs/github-action-templates to shared-v0.1.98 ([#141](https://github.com/jr200-labs/nats-iam-broker/issues/141)) ([7fd5c89](https://github.com/jr200-labs/nats-iam-broker/commit/7fd5c8922aaa7de827f87abba8e2959afd19f520))
+* **deps:** update peter-evans/create-pull-request action to v8.1.2 ([#139](https://github.com/jr200-labs/nats-iam-broker/issues/139)) ([f46f0da](https://github.com/jr200-labs/nats-iam-broker/commit/f46f0da944a9f28b9bce14db8689fb8aece17781))
+* **deps:** update peter-evans/create-pull-request action to v8.1.2 ([#142](https://github.com/jr200-labs/nats-iam-broker/issues/142)) ([a17ecf9](https://github.com/jr200-labs/nats-iam-broker/commit/a17ecf914798ef9d47de920834987225e0da3759))
+
 ## [1.7.7](https://github.com/jr200-labs/nats-iam-broker/compare/v1.7.6...v1.7.7) (2026-10-26)
 
 

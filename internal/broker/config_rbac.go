@@ -53,6 +53,7 @@ func (rbs *RoleBindingStrategy) UnmarshalYAML(unmarshal func(interface{}) error)
 
 // Struct definitions
 type Rbac struct {
+	UserProjection              *UserProjection     `yaml:"user_projection"`
 	Accounts                    []UserAccountInfo   `yaml:"user_accounts"`
 	RoleBinding                 []RoleBinding       `yaml:"role_binding"`
 	Roles                       []Role              `yaml:"roles"`
@@ -122,9 +123,12 @@ func (r *Rbac) discoverAccounts() ([]UserAccountInfo, error) {
 }
 
 type UserAccountInfo struct {
-	Name        string `yaml:"name"`
-	PublicKey   string `yaml:"public_key"`
-	SigningNKey NKey   `yaml:"signing_nkey"`
+	AccountJWT        string `yaml:"account_jwt"`
+	OperatorPublicKey string `yaml:"operator_public_key"`
+	Scoped            bool   `yaml:"scoped"`
+	Name              string `yaml:"name"`
+	PublicKey         string `yaml:"public_key"`
+	SigningNKey       NKey   `yaml:"signing_nkey"`
 }
 
 type RoleBinding struct {
@@ -486,6 +490,9 @@ func (c *Config) collateRoles(roles []string) (*jwt.Permissions, *jwt.Limits, er
 		zap.String("limits", string(internal.IgnoreError(json.Marshal(allLimits)))),
 	)
 
+	if err := validateRenderedPermissions(&allPermissions); err != nil {
+		return nil, nil, err
+	}
 	return &allPermissions, &allLimits, nil
 }
 

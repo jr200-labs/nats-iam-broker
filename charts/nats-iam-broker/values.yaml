@@ -187,14 +187,16 @@ config:
   #    # Custom claim name mappings, e.g. {"cognito:groups": "groups"}.
   #    # custom_claims_mapping: {}
   #
-  #    # Fetch additional user info from the IDP's userinfo endpoint.
+  #    # Fetch required current user info. Missing access tokens, outages and
+  #    # subject mismatches refuse the connection when enabled.
   #    # user_info:
   #    #   enabled: false
+  #    #   require_at_hash: true  # Explicit false only for optional-hash providers.
   #
   #    # Max lifetime for NATS JWTs minted from tokens issued by this IDP.
   #    # max_token_lifetime: 24h
   #
-  #    # Clock skew tolerance when validating token timestamps.
+  #    # Future-issuance clock skew tolerance; never extends token expiry.
   #    # clock_skew: 5m
   #
   #    # If true, startup continues even if this IDP's OIDC discovery fails.
@@ -222,12 +224,25 @@ config:
     # Discovered accounts are merged with those in `user_accounts`.
     # auto_accounts_dir: "/secrets"
 
+    # Optional verified identity projection (literal expr rules, not Go templates).
+    # Every IDP needs a unique `key` when configured. See the projection guide.
+    # user_projection:
+    #   name: id_token.sub
+    #   max_claims_age: 15m
+    #   tags:
+    #     - key: role
+    #       values: 'capture(userinfo.groups, "^role:([a-z0-9_]+)$")'
+
     # Explicitly defined NATS user accounts.
     # Each account represents a NATS account that users can be placed into.
     user_accounts: []
     #  - name: APP1
     #    public_key: "AAXXX..."   # Account public key (from *-id-1.pub)
     #    signing_nkey: '{{ readFile "/secrets/APP1-sk-1.nk" }}'
+    #    # For scoped issuance, also require a projection and service xkey:
+    #    # scoped: true
+    #    # account_jwt: '{{ readFile "/secrets/APP1.jwt" }}'
+    #    # operator_public_key: "O..."  # Independently pinned account JWT signer.
 
     # Named permission sets that can be assigned via role bindings.
     roles: []

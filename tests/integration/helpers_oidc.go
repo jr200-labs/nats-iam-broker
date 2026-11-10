@@ -18,11 +18,12 @@ import (
 
 // MockOIDC provides an in-process OIDC provider for integration testing.
 type MockOIDC struct {
-	Server     *httptest.Server
-	IssuerURL  string
-	SigningKey *rsa.PrivateKey
-	KeyID      string
-	signerOpts jose.SignerOptions
+	UserInfoHandler http.HandlerFunc
+	Server          *httptest.Server
+	IssuerURL       string
+	SigningKey      *rsa.PrivateKey
+	KeyID           string
+	signerOpts      jose.SignerOptions
 }
 
 // SetupMockOIDC creates a mock OIDC provider with discovery, JWKS, and token endpoints.
@@ -42,6 +43,13 @@ func SetupMockOIDC(t *testing.T) *MockOIDC {
 	mux.HandleFunc("/.well-known/openid-configuration", m.handleDiscovery)
 	mux.HandleFunc("/jwks", m.handleJWKS)
 	mux.HandleFunc("/token", m.handleToken)
+	mux.HandleFunc("/userinfo", func(w http.ResponseWriter, r *http.Request) {
+		if m.UserInfoHandler == nil {
+			http.NotFound(w, r)
+			return
+		}
+		m.UserInfoHandler(w, r)
+	})
 
 	m.Server = httptest.NewServer(mux)
 	m.IssuerURL = m.Server.URL
@@ -56,6 +64,7 @@ func SetupMockOIDC(t *testing.T) *MockOIDC {
 func (m *MockOIDC) handleDiscovery(w http.ResponseWriter, _ *http.Request) {
 	discovery := map[string]interface{}{
 		"issuer":                                m.IssuerURL,
+		"userinfo_endpoint":                     m.IssuerURL + "/userinfo",
 		"jwks_uri":                              m.IssuerURL + "/jwks",
 		"token_endpoint":                        m.IssuerURL + "/token",
 		"subject_types_supported":               []string{"public"},

@@ -46,4 +46,6 @@ Any claim in the IdP JWT that is not in the standard list above is available in 
 
 ## UserInfo Claims
 
-When `idp.user_info.enabled` is `true` and the client provides an `access_token`, the broker calls the OIDC UserInfo endpoint and merges all returned fields into the context. The available fields are provider-dependent but commonly include `phone_number`, `address`, and additional profile data.
+When `idp.user_info.enabled` is `true`, the client must provide an `access_token`. The broker calls the OIDC UserInfo endpoint and merges the verified returned fields into the context. The available fields are provider-dependent but commonly include `phone_number`, `address`, and additional profile data.
+
+A missing access token, failed fetch or UserInfo subject different from the original signed ID token refuses the connection. A present `at_hash` must validate; accepting an absent hash requires explicit `user_info.require_at_hash: false`. With user projection, ID-token and UserInfo claims are kept in separate namespaces rather than merged, and UserInfo is required whenever a rule references it.

@@ -24,6 +24,10 @@ type TestBroker struct {
 // SetupBroker writes config files and starts the broker in a goroutine.
 // It returns once the broker's micro service is registered on $SYS.REQ.USER.AUTH.
 func SetupBroker(t *testing.T, cluster *TestCluster, oidc *MockOIDC) *TestBroker {
+	return setupBroker(t, cluster, oidc, nil)
+}
+
+func setupBroker(t *testing.T, cluster *TestCluster, oidc *MockOIDC, configure func([]string)) *TestBroker {
 	t.Helper()
 
 	// Write account keys to files
@@ -139,6 +143,9 @@ service:
 	require.NoError(t, os.WriteFile(rbacFile, []byte(rbacConfig), 0o644))
 
 	configFiles := []string{envFile, idpFile, rbacFile}
+	if configure != nil {
+		configure(configFiles)
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 

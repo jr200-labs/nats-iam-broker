@@ -46,6 +46,8 @@ var standardClaims = func() map[string]bool {
 
 // https://www.iana.org/assignments/jwt/jwt.xhtml#claims
 type IdpJwtClaims struct {
+	signedExpiry      int64
+	projected         *NatsUser
 	Name              string                 `json:"name,omitempty"`
 	GivenName         string                 `json:"given_name,omitempty"`
 	FamilyName        string                 `json:"family_name,omitempty"`
@@ -227,7 +229,11 @@ func (j *IdpJwtClaims) fromMap(m map[string]interface{}, customMapping map[strin
 				// Preserve original type (string or array) for expression matching
 				field := reflect.ValueOf(j).Elem().FieldByName(structField)
 				if field.IsValid() && field.CanSet() {
-					field.Set(reflect.ValueOf(value))
+					if value == nil {
+						field.SetZero()
+					} else {
+						field.Set(reflect.ValueOf(value))
+					}
 				}
 			default:
 				// Use reflection to set the field value

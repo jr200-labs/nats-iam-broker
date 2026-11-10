@@ -34,6 +34,9 @@ func NewIdpVerifiers(ctx *Context, config *Config) ([]IdpAndJwtVerifier, error) 
 			zap.L().Error("Failed to setup IDP verifier, halting startup", zap.Error(err), zap.String("issuer_url", idp.IssuerURL), zap.String("client_id", idp.ClientID))
 			return nil, fmt.Errorf("failed to setup verifier for IDP %s (%s): %w", idp.Description, idp.IssuerURL, err)
 		}
+		if idp.UserInfo.RequireAtHash != nil {
+			idpVerifier.RequireAccessTokenHash = *idp.UserInfo.RequireAtHash
+		}
 		idpVerifiers = append(idpVerifiers, IdpAndJwtVerifier{idpVerifier, idp}) // Pass the pointer to the config
 	}
 	return idpVerifiers, nil
@@ -74,7 +77,8 @@ func runVerification(ctx context.Context, jwtToken string, items []IdpAndJwtVeri
 }
 
 type IdpJwtVerifier struct {
-	ctx *Context
+	RequireAccessTokenHash bool
+	ctx                    *Context
 	*oidc.IDTokenVerifier
 	provider         *oidc.Provider
 	issuerURL        string
@@ -112,18 +116,22 @@ func NewJwtVerifier(ctx *Context, clientID string, issuerURL string, maxTokenLif
 	}
 
 	return &IdpJwtVerifier{
-		ctx:              ctx,
-		IDTokenVerifier:  provider.Verifier(&oidc.Config{ClientID: clientID}),
-		provider:         provider,
-		issuerURL:        issuerURL,
-		MaxTokenLifetime: maxTokenLifetime,
-		ClockSkew:        clockSkew,
+		ctx:                    ctx,
+		RequireAccessTokenHash: true,
+		IDTokenVerifier:        provider.Verifier(&oidc.Config{ClientID: clientID}),
+		provider:               provider,
+		issuerURL:              issuerURL,
+		MaxTokenLifetime:       maxTokenLifetime,
+		ClockSkew:              clockSkew,
 	}, nil
 }
 
 // Verifies that the ID token was signed by idp and is valid.
 // Returns the claims embedded with the token
 func (v *IdpJwtVerifier) verifyJWT(ctx context.Context, token string, customMapping map[string]string) (*IdpJwtClaims, *oidc.IDToken, error) {
+	if len(token) > projectionMaxInputBytes {
+		return nil, nil, errors.New("ID token exceeds input limit")
+	}
 	claims := &IdpJwtClaims{}
 
 	if v.ctx.Options.LogSensitive {
@@ -175,14 +183,15 @@ func (v *IdpJwtVerifier) ValidateTimes(issuedAt time.Time, expiry time.Time) err
 	}
 
 	skewedEarliest := issuedAt.Unix() - int64(v.ClockSkew.Seconds())
-	skewedLatest := expiry.Unix() + int64(v.ClockSkew.Seconds())
+	// Clock skew tolerates future issuance, never extends a credential past exp.
+	expiryDeadline := expiry.Unix()
 
 	if now.Unix() < skewedEarliest {
 		return errors.New("token used too early. check clock skew?")
 	}
 
-	if now.Unix() > skewedLatest {
-		return errors.New("token used too late. check clock skew?")
+	if now.Unix() >= expiryDeadline {
+		return errors.New("token used too late: expired")
 	}
 
 	return nil
@@ -224,19 +233,32 @@ func (v *IdpJwtVerifier) GetUserInfo(ctx context.Context, accessToken string, id
 		return nil, fmt.Errorf("id token is required to verify access token")
 	}
 
-	// Verify the access token matches the hash in the ID token
-	if err := idToken.VerifyAccessToken(accessToken); err != nil {
-		return nil, fmt.Errorf("access token verification failed: %w", err)
+	// Preserve the strict default. Optional-hash code-flow providers require an
+	// explicit policy choice; exact provider/subject validation still applies.
+	if idToken.AccessTokenHash == "" && v.RequireAccessTokenHash {
+		return nil, errors.New("access token hash required")
 	}
+	// Verify the access token matches the hash in the ID token
+	if idToken.AccessTokenHash != "" {
+		if err := idToken.VerifyAccessToken(accessToken); err != nil {
+			return nil, errors.New("access token verification failed")
+		}
+	}
+	fetchCtx, cancel := context.WithTimeout(ctx, oidcTimeout)
+	defer cancel()
+	fetchCtx = boundedUserInfoContext(fetchCtx)
 
 	// Use the verified access token to fetch user info
-	userInfo, err := v.provider.UserInfo(ctx, oauth2.StaticTokenSource(&oauth2.Token{
+	userInfo, err := v.provider.UserInfo(fetchCtx, oauth2.StaticTokenSource(&oauth2.Token{
 		AccessToken: accessToken,
 	}))
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch user info: %w", err)
+		return nil, errors.New("failed to fetch user info")
 	}
 
+	if idToken.Subject == "" || userInfo.Subject != idToken.Subject {
+		return nil, errors.New("user info subject mismatch")
+	}
 	userInfoClaims := make(map[string]interface{})
 	if err := userInfo.Claims(&userInfoClaims); err != nil {
 		return nil, fmt.Errorf("failed to parse user info claims: %w", err)

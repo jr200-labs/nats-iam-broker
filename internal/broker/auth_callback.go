@@ -79,10 +79,7 @@ func handleAuthRequest(
 			if matchedVerifier != nil {
 				idpKey = matchedVerifier.config.Key
 			}
-			if m != nil {
-				m.UserProjectionErrors.WithLabelValues(idpKey, projectionErr.Kind).Inc()
-			}
-			zap.L().Warn("user projection refused", zap.String("kind", projectionErr.Kind), zap.String("output", projectionErr.Output))
+			recordProjectionRefusal(m, idpKey, projectionErr)
 			// No claims or evaluator details are returned to the client.
 			err = fmt.Errorf("authorization failed")
 		}
@@ -109,6 +106,11 @@ func handleAuthRequest(
 	_, buildSpan := getTracer().Start(reqCtx, "auth.callout.build_claims")
 	claims, signingKeyPair, userAccountInfo, resultStatus, err := buildUserClaims(srvCtx, config, configManager, reqClaims, matchedVerifier, request)
 	if err != nil {
+		var refusal *ProjectionError
+		if errors.As(err, &refusal) {
+			recordProjectionRefusal(m, matchedVerifier.config.Key, refusal)
+			err = errors.New("authorization failed")
+		}
 		buildSpan.SetStatus(codes.Error, err.Error())
 		buildSpan.RecordError(err)
 		buildSpan.End()
@@ -198,6 +200,7 @@ func verifyAndEnrich(
 		m.IDPVerifyDuration.WithLabelValues(idpDesc).Observe(time.Since(verifyStart).Seconds())
 	}
 
+	reqClaims.signedExpiry = verifiedIDToken.Expiry.Unix()
 	if rules := configManager.projection(matchedVerifier.config); rules != nil {
 		user, err := projectVerifiedUser(ctx, rules, reqClaims, matchedVerifier, verifiedIDToken, tokenReq, request)
 		if err != nil {
@@ -207,27 +210,22 @@ func verifyAndEnrich(
 		// Keep the legacy claim context for non-projection bindings, but protect
 		// minted expiry from mappings. Projection itself never sees client facts.
 		reqClaims.Expiry = verifiedIDToken.Expiry.Unix()
-		reqClaims.signedExpiry = verifiedIDToken.Expiry.Unix()
 		return reqClaims, matchedVerifier, tokenReq, nil
 	}
 
 	if matchedVerifier.config.UserInfo.Enabled {
-		if tokenReq.AccessToken != "" {
-			userInfoCtx, userInfoCancel := context.WithTimeout(ctx, oidcTimeout)
-			defer userInfoCancel()
-			userInfo, err := matchedVerifier.verifier.GetUserInfo(userInfoCtx, tokenReq.AccessToken, verifiedIDToken)
-			if err != nil {
-				zap.L().Warn("failed to fetch user info", zap.Error(err))
-			} else {
-				claims := reqClaims.toMap()
-				for k, v := range userInfo {
-					claims[k] = v
-				}
-				reqClaims.fromMap(claims, matchedVerifier.config.CustomMapping)
-			}
-		} else {
-			zap.L().Debug("skipping user info fetch - no access token available")
+		// Enabling current claims requires them; never silently fall back to an
+		// older snapshot after missing credentials, fetch errors or mismatches.
+		info, err := matchedVerifier.verifier.GetUserInfo(ctx, tokenReq.AccessToken, verifiedIDToken)
+		if err != nil {
+			return nil, matchedVerifier, tokenReq, errors.New("authorization failed")
 		}
+		claims := reqClaims.toMap()
+		for key, value := range info {
+			claims[key] = value
+		}
+		reqClaims.fromMap(claims, matchedVerifier.config.CustomMapping)
+		reqClaims.Expiry = verifiedIDToken.Expiry.Unix()
 	}
 
 	return reqClaims, matchedVerifier, tokenReq, nil
@@ -284,7 +282,7 @@ func buildUserClaims(
 	claims.Name = request.ConnectOptions.Username
 	claims.IssuerAccount = userAccountInfo.PublicKey
 	idpExpiry := reqClaims.Expiry
-	if reqClaims.projected != nil {
+	if reqClaims.signedExpiry > 0 {
 		idpExpiry = reqClaims.signedExpiry
 	}
 	claims.Expires = calculateExpiration(
@@ -308,7 +306,7 @@ func buildUserClaims(
 			claims.Expires = user.FreshUntil.Unix()
 		}
 		if claims.Expires <= time.Now().Unix() {
-			return nil, nil, nil, metrics.StatusDenied, fmt.Errorf("authorization failed")
+			return nil, nil, nil, metrics.StatusDenied, projectionStaleError("credential", user.FreshUntil)
 		}
 	} else {
 		claims.Tags.Add(fmt.Sprintf("email: %s, name: %s, idp: %s, expires: %s",
@@ -372,4 +370,12 @@ func publishAuditEvent(
 	if err := nc.PublishMsg(msg); err != nil {
 		zap.L().Warn("failed to publish user creation event", zap.Error(err))
 	}
+}
+
+func recordProjectionRefusal(m *metrics.Metrics, idp string, refusal *ProjectionError) {
+	if m != nil {
+		m.UserProjectionErrors.WithLabelValues(idp, refusal.Kind).Inc()
+	}
+	zap.L().Warn("user projection refused", zap.String("kind", refusal.Kind), zap.String("output", refusal.Output),
+		zap.String("namespace", refusal.Namespace), zap.String("reason", refusal.Reason), zap.Int("count", refusal.Count), zap.Int("max", refusal.Max), zap.Time("as_of", refusal.AsOf), zap.String("found", refusal.Found))
 }

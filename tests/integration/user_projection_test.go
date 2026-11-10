@@ -86,12 +86,14 @@ func TestUserProjectionScopedCallout(t *testing.T) {
       public_key: "%s"
       signing_nkey: "%s"
       scoped: true
+      account_jwt: "%s"
+      operator_public_key: "%s"
   role_binding:
     - user_account: APP1
       roles: []
       match:
         - expr: '"waiter" in user.tags.role'
-`, cluster.AppAccount.AccountPub, string(seed))
+`, cluster.AppAccount.AccountPub, string(seed), accountJWT, cluster.OperatorPub)
 		require.NoError(t, os.WriteFile(files[2], []byte(rbac), 0o600))
 	})
 	hash := sha256.Sum256([]byte("alice-access"))

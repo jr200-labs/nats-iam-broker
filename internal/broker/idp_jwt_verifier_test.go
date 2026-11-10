@@ -179,9 +179,10 @@ func TestIdpJwtVerifier_ValidateTimes(t *testing.T) {
 			expiry:   now.Add(1 * time.Hour),
 		},
 		{
-			name:     "token within clock skew (expired slightly ago)",
-			issuedAt: now.Add(-1 * time.Hour),
-			expiry:   now.Add(-3 * time.Minute), // within 5 min skew
+			name:      "expired token is refused even within clock skew",
+			issuedAt:  now.Add(-1 * time.Hour),
+			expiry:    now.Add(-3 * time.Minute), // within 5 min skew
+			expectErr: "token used too late",
 		},
 		{
 			name:     "expiry exactly at max lifetime boundary",

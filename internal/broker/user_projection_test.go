@@ -219,6 +219,29 @@ func TestScopedConfigurationRefusals(t *testing.T) {
 	cfg := Config{Service: Service{Account: ServiceAccount{XKeySeed: NKey{KeyPair: xkey}}}, Idp: []Idp{{UserProjection: rules}}, Rbac: Rbac{
 		Accounts: []UserAccountInfo{{Name: "APP", Scoped: true}}, RoleBinding: []RoleBinding{{Account: "APP"}},
 	}}
+
+	operator, err := nkeys.CreateOperator()
+	require.NoError(t, err)
+	operatorPub, err := operator.PublicKey()
+	require.NoError(t, err)
+	accountKey, err := nkeys.CreateAccount()
+	require.NoError(t, err)
+	accountPub, err := accountKey.PublicKey()
+	require.NoError(t, err)
+	signingKey, err := nkeys.CreateAccount()
+	require.NoError(t, err)
+	signingPub, err := signingKey.PublicKey()
+	require.NoError(t, err)
+	accountClaims := jwt.NewAccountClaims(accountPub)
+	scope := jwt.NewUserScope()
+	scope.Key = signingPub
+	accountClaims.SigningKeys.AddScopedSigner(scope)
+	accountJWT, err := accountClaims.Encode(operator)
+	require.NoError(t, err)
+	cfg.Rbac.Accounts[0].PublicKey = accountPub
+	cfg.Rbac.Accounts[0].SigningNKey = NKey{KeyPair: signingKey}
+	cfg.Rbac.Accounts[0].AccountJWT = accountJWT
+	cfg.Rbac.Accounts[0].OperatorPublicKey = operatorPub
 	require.NoError(t, cfg.validateScopedAccounts())
 	cfg.Service.Account.XKeySeed = NKey{}
 	require.Error(t, cfg.validateScopedAccounts())

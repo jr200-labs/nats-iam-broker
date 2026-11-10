@@ -46,7 +46,10 @@ type Metrics struct {
 }
 
 // New creates and registers all prometheus metrics.
-func New() *Metrics {
+func New() *Metrics { return NewWithRegisterer(prometheus.DefaultRegisterer) }
+
+// NewWithRegisterer isolates collectors for independently hosted broker instances.
+func NewWithRegisterer(registerer prometheus.Registerer) *Metrics {
 	m := &Metrics{
 		UserProjectionErrors: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: namespace, Name: "user_projection_errors_total", Help: "Projection refusals by IdP and bounded error kind.",
@@ -118,7 +121,7 @@ func New() *Metrics {
 		),
 	}
 
-	prometheus.MustRegister(
+	registerer.MustRegister(
 		m.UserProjectionErrors,
 		m.AuthRequestsTotal,
 		m.AuthRequestDuration,

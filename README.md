@@ -45,3 +45,5 @@ This project is licensed under the [MIT License](LICENSE).
 ### User projection and scoped issuance
 
 Opt-in verified identity projection, bounded claim freshness, and scoped signing-key issuance are documented in [the user projection guide](docs/design/user-projection.md). See the [implementation work tracker](docs/design/user-projection-work-tracker.md) for initial limitations and follow-up acceptance.
+
+When enabled, UserInfo is now required and must match the signed ID-token subject; outages and missing access tokens refuse new connections. Scoped issuance also requires a signed account JWT and pinned operator signer. See the guide's compatibility section before adopting these security adjustments.

@@ -25,15 +25,22 @@ func projectVerifiedUser(ctx context.Context, rules *UserProjection, claims *Idp
 	identity.IDToken["exp"] = token.Expiry.Unix()
 	if rules.compiled.reads["userinfo"] {
 		if tokens.AccessToken == "" {
-			return nil, projectionError("Unavailable", "userinfo")
+			return nil, unavailableUserInfo("no_access_token")
 		}
 		fetchCtx, cancel := context.WithTimeout(ctx, oidcTimeout)
 		defer cancel()
 		info, err := verifier.verifier.GetUserInfo(fetchCtx, tokens.AccessToken, token)
 		if err != nil || info["sub"] != token.Subject {
-			return nil, projectionError("Unavailable", "userinfo")
+			return nil, unavailableUserInfo("fetch_or_subject_check_failed")
 		}
 		identity.UserInfo = info
 	}
 	return rules.Project(identity)
+}
+
+func unavailableUserInfo(reason string) *ProjectionError {
+	e := projectionError("Unavailable", "userinfo")
+	e.Namespace = "userinfo"
+	e.Reason = reason
+	return e
 }

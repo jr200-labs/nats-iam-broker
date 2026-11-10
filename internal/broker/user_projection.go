@@ -24,6 +24,7 @@ const (
 	projectionMemoryBudget       = 4096
 	projectionDefaultMaxTags     = 128
 	projectionMaxTags            = 1024
+	projectionMaxWork            = 8 * 1024 * 1024
 )
 
 // UserProjection is literal configuration, compiled once per configuration load.
@@ -46,9 +47,11 @@ type ProjectionTagRule struct {
 }
 
 type compiledProjection struct {
-	name  *vm.Program
-	tags  []*vm.Program
-	reads map[string]bool
+	name     *vm.Program
+	tags     []*vm.Program
+	reads    map[string]bool
+	patterns map[string]*regexp.Regexp
+	work     int
 }
 
 // VerifiedIdentity contains only verified claims and server-vouched facts.
@@ -73,13 +76,21 @@ type NatsUser struct {
 // ProjectionError has bounded, non-sensitive fields safe to log by default.
 // Claim values and expression evaluator messages are deliberately excluded.
 type ProjectionError struct {
-	Kind   string
-	Output string
+	Found     string
+	Kind      string
+	Output    string
+	Reason    string
+	Namespace string
+	AsOf      time.Time
+	Count     int
+	Max       int
 }
 
 func (e *ProjectionError) Error() string { return "user projection: " + e.Kind + " (" + e.Output + ")" }
 
-func projectionError(kind, output string) error { return &ProjectionError{Kind: kind, Output: output} }
+func projectionError(kind, output string) *ProjectionError {
+	return &ProjectionError{Kind: kind, Output: output}
+}
 
 func validProjectionToken(value string, lower bool) bool {
 	if len(value) == 0 || len(value) > projectionMaxTokenBytes {
@@ -103,8 +114,8 @@ func (r *UserProjection) compile(multipleIDPs bool) error {
 	if r.MaxTags < 1 || r.MaxTags > projectionMaxTags || len(r.Tags) > r.MaxTags {
 		return fmt.Errorf("user_projection.max_tags must be between 1 and %d and bound rule count", projectionMaxTags)
 	}
-	compiled := &compiledProjection{reads: map[string]bool{}}
-	name, err := compileProjectionExpr(r.Name, compiled.reads)
+	compiled := &compiledProjection{reads: map[string]bool{}, patterns: map[string]*regexp.Regexp{}}
+	name, err := compileProjectionExpr(r.Name, compiled.reads, compiled.patterns, &compiled.work)
 	if err != nil {
 		return fmt.Errorf("user_projection.name: %w", err)
 	}
@@ -129,7 +140,7 @@ func (r *UserProjection) compile(multipleIDPs bool) error {
 		if rule.MinValues < 0 || rule.MaxValues < 0 || (rule.MaxValues > 0 && rule.MinValues > rule.MaxValues) || rule.MinValues > r.MaxTags || rule.MaxValues > r.MaxTags {
 			return fmt.Errorf("invalid user_projection tag cardinality")
 		}
-		program, err := compileProjectionExpr(rule.Values, compiled.reads)
+		program, err := compileProjectionExpr(rule.Values, compiled.reads, compiled.patterns, &compiled.work)
 		if err != nil {
 			return fmt.Errorf("user_projection.tags.%s: %w", rule.Key, err)
 		}
@@ -140,14 +151,17 @@ func (r *UserProjection) compile(multipleIDPs bool) error {
 }
 
 type projectionSyntax struct {
-	reads map[string]bool
-	err   error
+	reads    map[string]bool
+	patterns map[string]*regexp.Regexp
+	err      error
+	nodes    int
 }
 
 func (v *projectionSyntax) Visit(node *ast.Node) {
 	if v.err != nil {
 		return
 	}
+	v.nodes++
 	switch n := (*node).(type) {
 	case *ast.IdentifierNode:
 		switch n.Value {
@@ -182,7 +196,11 @@ func (v *projectionSyntax) Visit(node *ast.Node) {
 				v.err = fmt.Errorf("capture pattern must be a literal")
 				return
 			}
-			_, v.err = projectionPattern(pattern.Value)
+			var re *regexp.Regexp
+			re, v.err = projectionPattern(pattern.Value)
+			if v.err == nil {
+				v.patterns[pattern.Value] = re
+			}
 		default:
 			v.err = fmt.Errorf("projection allows only capture and digest calls")
 		}
@@ -216,7 +234,7 @@ func projectionPattern(pattern string) (*regexp.Regexp, error) {
 	return re, nil
 }
 
-func compileProjectionExpr(source string, reads map[string]bool) (*vm.Program, error) {
+func compileProjectionExpr(source string, reads map[string]bool, patterns map[string]*regexp.Regexp, work *int) (*vm.Program, error) {
 	if len(source) == 0 || len(source) > projectionMaxExpressionBytes {
 		return nil, fmt.Errorf("expression must contain 1 to %d bytes", projectionMaxExpressionBytes)
 	}
@@ -226,13 +244,14 @@ func compileProjectionExpr(source string, reads map[string]bool) (*vm.Program, e
 	if err != nil {
 		return nil, err
 	}
-	syntax := &projectionSyntax{reads: reads}
+	syntax := &projectionSyntax{reads: reads, patterns: patterns}
 	ast.Walk(&tree.Node, syntax)
 	if syntax.err != nil {
 		return nil, syntax.err
 	}
 	// Only pure functions are installed. No config-rendering IO functions or builtins.
-	env := projectionEnvironment(VerifiedIdentity{})
+	*work += syntax.nodes
+	env := projectionEnvironment(VerifiedIdentity{}, patterns)
 	return expr.Compile(source, expr.Env(env), expr.DisableAllBuiltins(), expr.MaxNodes(projectionMaxNodes), expr.Optimize(false))
 }
 
@@ -259,11 +278,7 @@ func projectionStrings(value interface{}) ([]string, error) {
 	}
 }
 
-func projectionCapture(value interface{}, pattern string) ([]string, error) {
-	re, err := projectionPattern(pattern)
-	if err != nil {
-		return nil, err
-	}
+func projectionCapture(value interface{}, re *regexp.Regexp) ([]string, error) {
 	values, err := projectionStrings(value)
 	if err != nil {
 		return nil, err
@@ -277,11 +292,17 @@ func projectionCapture(value interface{}, pattern string) ([]string, error) {
 	return matches, nil
 }
 
-func projectionEnvironment(identity VerifiedIdentity) map[string]interface{} {
+func projectionEnvironment(identity VerifiedIdentity, patterns map[string]*regexp.Regexp) map[string]interface{} {
 	return map[string]interface{}{
 		"id_token": identity.IDToken, "userinfo": identity.UserInfo, "idp": identity.IDP,
 		"connection": identity.Connection, "server": identity.Server,
-		"capture": projectionCapture, "digest": sha256Hex,
+		"capture": func(value interface{}, pattern string) ([]string, error) {
+			re := patterns[pattern]
+			if re == nil {
+				return nil, fmt.Errorf("uncompiled capture pattern")
+			}
+			return projectionCapture(value, re)
+		}, "digest": sha256Hex,
 	}
 }
 
@@ -294,29 +315,42 @@ func (r *UserProjection) Project(identity VerifiedIdentity) (*NatsUser, error) {
 	// Bound actual input independently of the expression VM's allocation budget.
 	data, err := json.Marshal([]interface{}{identity.IDToken, identity.UserInfo, identity.IDP, identity.Connection, identity.Server})
 	if err != nil || len(data) > projectionMaxInputBytes {
-		return nil, projectionError("TooMany", "identity")
+		return nil, projectionLimitError("identity", len(data), projectionMaxInputBytes)
+	}
+	// Bound aggregate work across all rules as well as individual expressions.
+	// Conservative input-by-AST cost keeps a large claim and many rules from
+	// multiplying without limit. Division avoids overflow on 32-bit platforms.
+	if r.compiled.work > projectionMaxWork/len(data) {
+		return nil, projectionLimitError("work", r.compiled.work, projectionMaxWork/len(data))
 	}
 	if identity.VerifiedAt.IsZero() || identity.IssuedAt.IsZero() {
 		return nil, projectionError("Missing", "timestamp")
 	}
 	if r.compiled.reads["userinfo"] && identity.UserInfo == nil {
-		return nil, projectionError("Unavailable", "userinfo")
+		e := projectionError("Unavailable", "userinfo")
+		e.Namespace = "userinfo"
+		e.Reason = "not_fetched"
+		return nil, e
 	}
 	user := &NatsUser{Tags: map[string][]string{}, FreshUntil: identity.VerifiedAt.Add(r.MaxClaimsAge.Duration)}
 	// Config facts have no age. ID-token facts retain the signed token's iat.
 	if r.compiled.reads["id_token"] {
 		if identity.IssuedAt.After(identity.VerifiedAt) {
-			return nil, projectionError("Stale", "id_token")
+			e := projectionStaleError("id_token", identity.IssuedAt)
+			e.Reason = "future_issued_at"
+			return nil, e
 		}
 		until := identity.IssuedAt.Add(r.MaxClaimsAge.Duration)
 		if !until.After(identity.VerifiedAt) {
-			return nil, projectionError("Stale", "id_token")
+			e := projectionStaleError("id_token", identity.IssuedAt)
+			e.Reason = "claims_age"
+			return nil, e
 		}
 		if until.Before(user.FreshUntil) {
 			user.FreshUntil = until
 		}
 	}
-	env := projectionEnvironment(identity)
+	env := projectionEnvironment(identity, r.compiled.patterns)
 	eval := func(program *vm.Program, output string) (interface{}, error) {
 		machine := vm.VM{MemoryBudget: projectionMemoryBudget}
 		value, err := machine.Run(program, env)
@@ -334,20 +368,20 @@ func (r *UserProjection) Project(identity VerifiedIdentity) (*NatsUser, error) {
 	// shared, apparently valid identity.
 	subject, subjectIsString := identity.IDToken["sub"].(string)
 	if !subjectIsString {
-		return nil, projectionError("WrongType", "name")
+		return nil, projectionTypeError("name", identity.IDToken["sub"])
 	}
 	if subject == "" {
 		return nil, projectionError("Missing", "name")
 	}
 	name, ok := value.(string)
 	if !ok {
-		return nil, projectionError("WrongType", "name")
+		return nil, projectionTypeError("name", value)
 	}
 	if name == "" {
 		return nil, projectionError("Missing", "name")
 	}
 	if !validProjectionToken(name, false) {
-		return nil, projectionError("NotAToken", "name")
+		return nil, projectionTokenError("name", name, false)
 	}
 	user.Name = name
 	total := 0
@@ -358,12 +392,12 @@ func (r *UserProjection) Project(identity VerifiedIdentity) (*NatsUser, error) {
 		}
 		values, err := projectionStrings(value)
 		if err != nil {
-			return nil, projectionError("WrongType", rule.Key)
+			return nil, projectionTypeError(rule.Key, value)
 		}
 		unique := map[string]bool{}
 		for _, v := range values {
 			if !validProjectionToken(v, true) {
-				return nil, projectionError("NotAToken", rule.Key)
+				return nil, projectionTokenError(rule.Key, v, true)
 			}
 			unique[v] = true
 		}
@@ -372,11 +406,11 @@ func (r *UserProjection) Project(identity VerifiedIdentity) (*NatsUser, error) {
 			return nil, projectionError("Missing", rule.Key)
 		}
 		if rule.MaxValues > 0 && count > rule.MaxValues {
-			return nil, projectionError("TooMany", rule.Key)
+			return nil, projectionLimitError(rule.Key, count, rule.MaxValues)
 		}
 		total += count
 		if total > r.MaxTags {
-			return nil, projectionError("TooMany", "tags")
+			return nil, projectionLimitError("tags", total, r.MaxTags)
 		}
 		sorted := make([]string, 0, count)
 		for v := range unique {
@@ -405,4 +439,39 @@ func (u *NatsUser) jwtTags() []string {
 		}
 	}
 	return tags
+}
+
+func projectionLimitError(output string, count, max int) *ProjectionError {
+	e := projectionError("TooMany", output)
+	e.Count = count
+	e.Max = max
+	return e
+}
+
+func projectionStaleError(namespace string, asOf time.Time) *ProjectionError {
+	e := projectionError("Stale", namespace)
+	e.Namespace = namespace
+	e.AsOf = asOf
+	return e
+}
+
+func projectionTypeError(output string, value interface{}) *ProjectionError {
+	e := projectionError("WrongType", output)
+	e.Found = fmt.Sprintf("%T", value)
+	return e
+}
+
+func projectionTokenError(output, value string, lower bool) *ProjectionError {
+	e := projectionError("NotAToken", output)
+	switch {
+	case value == "":
+		e.Reason = "empty"
+	case len(value) > projectionMaxTokenBytes:
+		e.Reason = "too_long"
+	case lower && value != strings.ToLower(value):
+		e.Reason = "uppercase"
+	default:
+		e.Reason = "unsafe_character"
+	}
+	return e
 }

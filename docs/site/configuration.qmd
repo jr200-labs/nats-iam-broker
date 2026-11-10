@@ -102,14 +102,17 @@ These settings live under `server:` in the YAML config. They can also be set via
 
 | Key | Type | Description |
 | --- | ---- | ----------- |
+| `idp[].key` | `string` | Unique lowercase provider token without `:`; required when any user projection is configured. |
+| `idp[].user_projection` | `object` | Overrides the global user projection for this provider. |
 | `idp[].issuer_url` | `string` | The URL of the IdP issuer (required) |
 | `idp[].client_id` | `string` | The client identifier registered with the IdP (required) |
 | `idp[].description` | `string` | Human-readable description of this IDP |
 | `idp[].custom_mapping` | `map[string]string` | Maps custom IDP claim names to standardized claim names (e.g. `"https://example.com/claims/roles": "roles"`) |
 | `idp[].ignore_setup_error` | `bool` | If `true`, logs errors during the initial setup/verification of this IDP (e.g., connection errors to `issuer_url`) but allows the broker to start with other valid IDPs. Defaults to `false`. |
-| `idp[].user_info.enabled` | `bool` | If `true`, fetches additional claims from the OIDC UserInfo endpoint and merges them into the matching context. Requires the client to provide an `access_token`. |
+| `idp[].user_info.enabled` | `bool` | If `true`, fetches additional claims from the OIDC UserInfo endpoint and merges them into the matching context. Requires the client to provide an `access_token`; missing credentials, a failed fetch or a subject mismatch refuse the connection. A present `at_hash` is validated; its absence requires explicit opt-out below. |
+| `idp[].user_info.require_at_hash` | `bool` | Defaults to `true`. Set `false` explicitly for code-flow providers omitting `at_hash`; a present hash must still validate, and exact UserInfo subject equality is always required. |
 | `idp[].max_token_lifetime` | `duration` | Maximum allowed lifetime for incoming IDP tokens. Tokens with an expiry further in the future than this duration from _now_ are rejected. Defaults to `24h`. |
-| `idp[].clock_skew` | `duration` | Allowed clock skew when validating IDP token `iat` and `exp` timestamps. Defaults to `5m`. |
+| `idp[].clock_skew` | `duration` | Allowed future-issuance skew for `iat`. Never extends `exp`; exact expiry is refused. Defaults to `5m`. |
 
 ## IDP Validation
 
@@ -138,10 +141,13 @@ The expiry of the issued NATS JWT is determined by the following rules, applied 
 The IDP ceiling ensures that the broker never issues a NATS token that outlives the upstream IdP token. This is a security invariant: if the IdP granted a 30-minute token, the NATS JWT will never exceed 30 minutes regardless of other configuration.
 :::
 
+With user projection, expiry is also capped by `fresh_until`, calculated from the oldest namespace read plus the required `max_claims_age`. Reading `id_token.sub` includes the signed token's `iat`, even when grants come from current UserInfo.
+
 ## RBAC Configuration
 
 | Key | Type | Description |
 | --- | ---- | ----------- |
+| `rbac.user_projection` | `object` | Opt-in verified identity projection; requires `name` and positive `max_claims_age`, with optional `tags` and `max_tags`. |
 | `rbac.token_max_expiration` | `duration` | Default maximum expiry for minted NATS JWTs. Overridden by per-binding `token_max_expiration`. |
 | `rbac.role_binding_matching_strategy` | `string` | Strategy for selecting a role binding when multiple could match. `strict` or `best_match`. Defaults to `best_match`. See [Matching Strategies](role-binding.qmd#sec-matching-strategies). |
 | `rbac.auto_accounts_dir` | `string` | Optional. Directory to scan for `*-id-1.pub` / `*-sk-1.nk` file pairs to auto-discover user accounts. |
@@ -149,6 +155,9 @@ The IDP ceiling ensures that the broker never issues a NATS token that outlives 
 | `rbac.user_accounts[i].name` | `string` | Name of user-jwt signing account |
 | `rbac.user_accounts[i].public_key` | `string` | Public key of user-jwt signing account |
 | `rbac.user_accounts[i].signing_nkey` | `string` | Signing key of user-jwt signing account in nkey format |
+| `rbac.user_accounts[i].scoped` | `bool` | Emit empty user permission limits so the account scope supplies policy; requires a verified scoped account artifact. |
+| `rbac.user_accounts[i].account_jwt` | `string` | Signed account JWT required for scoped issuance; its account and user signing scope must match. |
+| `rbac.user_accounts[i].operator_public_key` | `string` | Independently pinned operator signer of `account_jwt`, required for scoped issuance. |
 | `rbac.roles` | - | Set of referenceable nats jwt permission groupings |
 | `rbac.roles[i].name` | `string` | Role name |
 | `rbac.roles[i].permissions` | [jwt.Permissions](https://github.com/nats-io/jwt/blob/main/v2/types.go) | nats-io/jwt permissions structure (see link) |

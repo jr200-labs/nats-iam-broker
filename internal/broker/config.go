@@ -104,7 +104,8 @@ type Idp struct {
 }
 
 type UserInfoConfig struct {
-	Enabled bool `yaml:"enabled"`
+	RequireAtHash *bool `yaml:"require_at_hash"`
+	Enabled       bool  `yaml:"enabled"`
 }
 
 type IdpJwtValidationSpec struct {

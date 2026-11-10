@@ -131,7 +131,7 @@ func decodeJWEHeader(token string) (map[string]interface{}, error) {
 }
 
 func decryptJWE(token string, key []byte) ([]byte, error) {
-	jwe, err := jose.ParseEncrypted(token,
+	jwe, err := jose.ParseEncryptedCompact(token,
 		[]jose.KeyAlgorithm{jose.DIRECT},
 		[]jose.ContentEncryption{jose.A256CBC_HS512},
 	)

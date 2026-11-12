@@ -90,6 +90,49 @@ fetch_shared() {
     fetch_from "$SHARED_BASE_URL" "$remote" "$out"
 }
 
+# Only Renovate's daily cron varies by repository. Render into a temporary
+# file so an identity/fetch failure never damages the committed caller.
+renovate_cron() {
+    local identity="${GITHUB_REPOSITORY:-}" remote checksum slot
+    if [ -z "$identity" ]; then
+        remote=$(git config --get remote.origin.url 2>/dev/null) || remote=""
+        case "$remote" in
+            https://github.com/*) identity=${remote#https://github.com/} ;;
+            git@github.com:*) identity=${remote#git@github.com:} ;;
+            ssh://git@github.com/*) identity=${remote#ssh://git@github.com/} ;;
+        esac
+        identity=${identity%.git}
+    fi
+    [[ "$identity" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || {
+        warn "Renovate staggering requires GITHUB_REPOSITORY or a GitHub origin remote"
+        return 1
+    }
+    # POSIX cksum is available on Linux and macOS. Hash only owner/repo,
+    # without a newline, so every sync and check chooses the same UTC slot.
+    checksum=$(printf '%s' "$identity" | tr '[:upper:]' '[:lower:]' | cksum) || return 1
+    checksum=${checksum%% *}
+    slot=$((checksum % 59))
+    printf '%s 16 * * *\n' "$((1 + slot))"
+}
+
+fetch_workflow() {
+    local workflow="$1" out="$2" staged cron
+    staged=$(mktemp) || return 1
+    if ! fetch "workflows/${workflow}.yaml" "$staged"; then
+        rm -f "$staged"
+        return 1
+    fi
+    if [ "$workflow" = renovate ]; then
+        cron=$(renovate_cron) || { rm -f "$staged"; return 1; }
+        if ! RENOVATE_CRON="$cron" yq -i '.on.schedule = [{"cron": strenv(RENOVATE_CRON)}]' "$staged"; then
+            rm -f "$staged"
+            return 1
+        fi
+    fi
+    mkdir -p "$(dirname "$out")"
+    mv "$staged" "$out"
+}
+
 refresh_entrypoints() {
     local temp_dir changed_self=0 entry staged
     temp_dir=$(mktemp -d)
@@ -340,7 +383,7 @@ case "$MODE" in
         mkdir -p "$WORKFLOWS_DIR" scripts
         workflows_synced=1
         while IFS= read -r wf; do
-            if fetch "workflows/${wf}.yaml" "${WORKFLOWS_DIR}/${wf}.yaml"; then
+            if fetch_workflow "$wf" "${WORKFLOWS_DIR}/${wf}.yaml"; then
                 echo "synced: ${wf}.yaml"
             else
                 warn "fetch failed: workflows/${wf}.yaml"
@@ -403,7 +446,7 @@ case "$MODE" in
         while IFS= read -r wf; do
             local_file="${WORKFLOWS_DIR}/${wf}.yaml"
             remote_file="${tmpdir}/${wf}.yaml"
-            if ! fetch "workflows/${wf}.yaml" "$remote_file"; then
+            if ! fetch_workflow "$wf" "$remote_file"; then
                 warn "fetch failed: workflows/${wf}.yaml"
                 rc=1
                 continue

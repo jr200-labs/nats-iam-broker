@@ -1,10 +1,9 @@
 # GENERATED/SHARED WORKFLOW: copied into consuming repos by sync-shared.
 # Do not edit in consuming repos; change jr200-labs/github-action-templates and sync.
 name: renovate
-
 on:
   schedule:
-    - cron: "0 17 * * *"
+    - cron: 9 16 * * *
   workflow_dispatch:
     inputs:
       repair-lockfiles:
@@ -17,7 +16,6 @@ on:
         required: false
         type: boolean
         default: false
-
 # Only the caller's TOP-LEVEL permissions cascade into reusable
 # workflows. The reusable's renovate job needs contents/issues/PR
 # writes for repo state + actions:read for its post-step that fetches
@@ -30,7 +28,6 @@ permissions:
   statuses: write
   actions: read
   packages: read
-
 jobs:
   renovate:
     uses: jr200-labs/github-action-templates/.github/workflows/renovate.yaml@master

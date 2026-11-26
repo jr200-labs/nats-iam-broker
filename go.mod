@@ -4,14 +4,14 @@ go 1.27.4
 
 require (
 	github.com/coreos/go-oidc/v3 v3.21.0
-	github.com/expr-lang/expr v1.17.8
+	github.com/expr-lang/expr v1.18.1
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/go-jose/go-jose/v4 v4.1.9
 	github.com/go-playground/validator v9.31.0+incompatible
 	github.com/goccy/go-yaml v1.19.2
 	github.com/nats-io/jwt/v2 v2.8.3
 	github.com/nats-io/nats-server/v2 v2.15.3
-	github.com/nats-io/nats.go v1.55.0
+	github.com/nats-io/nats.go v1.56.0
 	github.com/nats-io/nkeys v0.4.17
 	github.com/prometheus/client_golang v1.25.0
 	github.com/spf13/cobra v1.10.2
